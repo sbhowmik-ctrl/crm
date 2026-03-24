@@ -1,0 +1,71 @@
+---
+description: Enforce role-rank guard before any user delete — Admin cannot delete Superadmin
+alwaysApply: true
+---
+
+# Delete User — Role Guard (Critical Safety Rule)
+
+Any function that deletes or demotes a user **must** compare role ranks before
+the Prisma call. Skipping this check allows privilege escalation by deletion.
+
+## Required check order
+
+1. Fetch the **target** user's current role from the DB (never trust client input).
+2. Compare `rankOf(actor.role)` against `rankOf(target.role)`.
+3. Reject if the actor's rank is **not strictly greater** than the target's rank.
+4. Only then call `prisma.user.delete(...)`.
+
+```typescript
+// ❌ BAD — deletes without checking target's role
+export async function deleteUser(targetId: string) {
+  const session = await auth();
+  await prisma.user.delete({ where: { id: targetId } });
+}
+
+// ✅ GOOD
+import { Role } from "@prisma/client";
+
+const ROLE_RANK: Record<Role, number> = {
+  INTERN: 0, USER: 1, MODERATOR: 2, ADMIN: 3, SUPERADMIN: 4,
+};
+
+export async function deleteUser(targetId: string): Promise<DeleteUserResult> {
+  const session = await auth();
+  if (!session?.user) return { success: false, error: "Unauthorized." };
+
+  // 1. Fetch the target from DB — never trust role from client payload
+  const target = await prisma.user.findUnique({
+    where:  { id: targetId },
+    select: { id: true, role: true },
+  });
+  if (!target) return { success: false, error: "User not found." };
+
+  // 2. Prevent self-deletion
+  if (target.id === session.user.id) {
+    return { success: false, error: "You cannot delete your own account." };
+  }
+
+  // 3. Actor must outrank the target — Admin cannot delete Admin or Superadmin
+  if (ROLE_RANK[session.user.role] <= ROLE_RANK[target.role]) {
+    return {
+      success: false,
+      error: `A ${session.user.role} cannot delete a ${target.role}.`,
+    };
+  }
+
+  // 4. Safe to delete
+  await prisma.user.delete({ where: { id: targetId } });
+  return { success: true };
+}
+```
+
+## Why `<=` not `<`
+
+Using `<=` means a role can never delete a peer at the same rank (e.g., an Admin
+cannot delete another Admin). Only a strictly higher rank may delete.
+
+## Apply this pattern to
+
+- `deleteUser()` Server Actions
+- `updateUser()` role-change actions (same rank check before demoting)
+- Any bulk user management endpoints

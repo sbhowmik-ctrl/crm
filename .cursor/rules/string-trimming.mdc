@@ -1,0 +1,50 @@
+---
+description: Always trim string inputs in Zod schemas and Prisma middleware
+globs: **/*.ts
+alwaysApply: false
+---
+
+# String Trimming Convention
+
+All string inputs must be trimmed **before** validation or persistence. Never rely on the caller to trim.
+
+## In Zod Schemas
+
+Use `.trim()` directly in the schema so trimming and validation happen atomically.
+
+```typescript
+// ❌ BAD — trimming done manually at the call site, easy to forget
+const schema = z.object({ name: z.string().min(1) });
+const parsed = schema.parse({ name: input.name.trim() });
+
+// ✅ GOOD — schema owns the trimming contract
+const schema = z.object({ name: z.string().trim().min(1, "Name is required.") });
+const parsed = schema.parse({ name: input.name });
+```
+
+Chain order matters: `.trim()` must come **before** `.min()` so min-length validation
+runs on the trimmed value and whitespace-only strings are correctly rejected.
+
+## In Prisma Middleware / Client Extensions
+
+The project's `lib/prisma.ts` already runs a recursive `trimStrings()` on all
+`create`, `update`, and `upsert` payloads. Do **not** duplicate trimming logic in
+Server Actions for fields that go through Prisma — rely on the extension.
+
+For fields that do **not** go through Prisma (e.g., search query params, URL
+segments, email lookups), trim explicitly:
+
+```typescript
+// ✅ Trim before a Prisma lookup
+const user = await prisma.user.findUnique({
+  where: { email: rawEmail.trim().toLowerCase() },
+});
+```
+
+## Quick Reference
+
+| Location | Method |
+|---|---|
+| Zod schema fields | `.trim().min(1, "…")` |
+| Non-Prisma string params | `value.trim()` at point of use |
+| Prisma write payloads | Handled by `lib/prisma.ts` extension — no action needed |

@@ -1,0 +1,143 @@
+// 1. Generator remains the same
+generator client {
+  provider = "prisma-client-js"
+}
+
+// 2. Data Source: We REMOVE the 'url' line here per Prisma 7 rules
+datasource db {
+  provider = "postgresql"
+}
+
+// 3. The Role Hierarchy
+enum Role {
+  SUPERADMIN
+  ADMIN
+  MODERATOR
+  USER
+  INTERN
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  passwordHash  String
+  role          Role      @default(USER)
+
+  // Required by Auth.js Prisma adapter
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+
+  // Domain relations
+  createdSecrets Secret[] @relation("SecretOwner")
+  createdNotes   Note[]   @relation("NoteOwner")
+  sharedSecrets  Secret[] @relation("SecretAccess")
+  sharedNotes    Note[]   @relation("NoteAccess")
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// Auth.js adapter models
+// ---------------------------------------------------------------------------
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  secrets     Secret[]
+  notes       Note[]
+  createdAt   DateTime @default(now())
+}
+
+model Secret {
+  id             String   @id @default(cuid())
+  key            String   // e.g., "DATABASE_URL"
+  encryptedValue String   // AES-256-GCM ciphertext + auth tag (hex)
+  iv             String   // AES-256-GCM 96-bit initialisation vector (hex)
+
+  // Project relation
+  projectId      String
+  project        Project  @relation(fields: [projectId], references: [id])
+
+  // Ownership
+  ownerId        String
+  owner          User     @relation("SecretOwner", fields: [ownerId], references: [id])
+
+  // allowedUserIds — the explicit per-user access list.
+  // A record is visible to a USER/INTERN ONLY if their id appears here.
+  // MODERATOR and above bypass this list via role-based access.
+  // Stored as a relation (not String[]) so referential integrity is enforced.
+  sharedWith     User[]   @relation("SecretAccess")
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+enum NoteType {
+  NORMAL
+  PROJECT_BASED
+}
+
+model Note {
+  id          String   @id @default(cuid())
+  title       String
+  content     String   @db.Text
+  type        NoteType @default(NORMAL)
+
+  // Optional project relation (only set when type = PROJECT_BASED)
+  projectId   String?
+  project     Project? @relation(fields: [projectId], references: [id])
+
+  // Ownership
+  ownerId     String
+  owner       User     @relation("NoteOwner", fields: [ownerId], references: [id])
+
+  // allowedUserIds — the explicit per-user access list.
+  // A record is visible to a USER/INTERN ONLY if their id appears here.
+  // MODERATOR and above bypass this list via role-based access.
+  // Stored as a relation (not String[]) so referential integrity is enforced.
+  sharedWith  User[]   @relation("NoteAccess")
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

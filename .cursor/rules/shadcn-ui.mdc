@@ -1,0 +1,67 @@
+---
+description: Use Shadcn/UI for all UI components — no custom primitives
+globs: **/*.tsx
+alwaysApply: false
+---
+
+# UI Component Standard: Shadcn/UI
+
+All UI components must be built on **Shadcn/UI** primitives. Do not hand-roll
+buttons, inputs, dialogs, selects, toasts, or other interactive elements from
+scratch with raw Tailwind.
+
+## Install a component before using it
+
+```bash
+npx shadcn@latest add <component-name>
+# Examples:
+npx shadcn@latest add button input textarea select dialog toast badge
+```
+
+Installed components live in `components/ui/` and can be customised freely.
+
+## Usage patterns
+
+```tsx
+// ❌ BAD — hand-rolled button
+<button className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white ...">
+  Save
+</button>
+
+// ✅ GOOD — Shadcn primitive
+import { Button } from "@/components/ui/button";
+<Button>Save</Button>
+<Button variant="destructive">Delete</Button>
+<Button variant="outline" disabled={isPending}>Cancel</Button>
+```
+
+```tsx
+// ❌ BAD — hand-rolled input + label
+<label className="block text-sm font-medium ...">Email</label>
+<input className="border rounded-lg px-3 ..." />
+
+// ✅ GOOD
+import { Label }  from "@/components/ui/label";
+import { Input }  from "@/components/ui/input";
+<Label htmlFor="email">Email</Label>
+<Input id="email" type="email" placeholder="you@example.com" />
+```
+
+## Accessible patterns
+
+- Always pair `<Input>` / `<Textarea>` / `<Select>` with a `<Label>`.
+- Use `<FormMessage>` from `components/ui/form` for validation errors when
+  using React Hook Form; use a plain `<p className="text-sm text-destructive">`
+  for manual forms.
+- Use `<Dialog>` for modals, `<AlertDialog>` for destructive confirmations.
+- Use `useToast()` + `<Toaster>` for transient feedback, not `alert()`.
+
+## Theming
+
+Colours are CSS variables in `globals.css` (`--primary`, `--destructive`, etc.).
+Prefer Shadcn variant props over ad-hoc Tailwind colour overrides:
+
+```tsx
+<Badge variant="destructive">Superadmin</Badge>   // ✅
+<Badge className="bg-red-600 text-white">…</Badge> // ❌
+```
