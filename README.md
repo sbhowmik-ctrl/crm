@@ -1,210 +1,54 @@
 # Credential Vault
 
-A secure, self-hosted credential management dashboard built with Next.js 16, Auth.js v5, Prisma 7, and PostgreSQL. Store environment variables and team notes behind AES-256-GCM encryption with fine-grained role-based and per-user access control.
-
----
+A secure, self-hosted credential management dashboard built with Next.js 16, Auth.js v5, Prisma 7, and PostgreSQL. Store environment variables, credential keys, and team notes behind AES-256-GCM encryption with fine-grained role-based and per-user access control.
 
 ## Features
 
-- **AES-256-GCM encrypted secrets** — values are encrypted at rest; the plaintext never leaves the server
-- **Project-based organisation** — group secrets and notes under named projects
-- **General notes** — standalone notes not tied to any project
-- **Role-Based Access Control (RBAC)** — five-tier hierarchy enforced on every server action
-- **Per-record sharing** — grant individual users access to specific secrets or notes
-- **Live role sync** — role changes (even made directly in the database) take effect on the next page load without requiring re-login
-- **Import `.env` files** — paste or upload a `.env` file; preview parsed key-value pairs before saving
-- **Copy to clipboard** — decrypt and copy a secret value in one click (MODERATOR+ or explicitly shared users)
-- **User management** — promote, demote, or delete users from the dashboard
-
----
+* **AES-256-GCM encrypted secrets** — values are encrypted at rest; the plaintext never leaves the server.
+* **Project & Subproject organization** — group secrets and notes under hierarchical named projects.
+* **Credential Sections** — organize standalone key-value credentials into global sections outside of projects.
+* **Approval Workflows** — Users submit secrets, notes, and credential keys to a pending queue for Admin/Superadmin approval.
+* **General & Project-Based Notes** — create standalone notes or link them to specific project hierarchies.
+* **Activity Audit Log** — tracks all vault operations including creates, updates, deletes, and access changes.
+* **Email Invitations** — administrators can invite new users via secure email tokens.
+* **Live role & access sync** — Server-Sent Events (SSE) instantly broadcast access revocations and role changes without requiring a page refresh or re-login.
+* **Archiving** — soft-delete projects, notes, and credential sections to declutter the workspace without permanent data loss.
+* **Import `.env` files** — paste or upload a `.env` file; preview parsed key-value pairs before saving or submitting for approval.
 
 ## Tech Stack
 
 | Layer | Technology |
-|---|---|
-| Framework | Next.js 16 (App Router) |
-| Language | TypeScript |
-| Auth | Auth.js v5 (NextAuth) — Credentials provider + JWT |
-| ORM | Prisma 7 |
-| Database | PostgreSQL |
-| Encryption | AES-256-GCM via Node.js `crypto` |
-| UI | Shadcn/ui + Base UI + Tailwind CSS v4 |
-| Toasts | Sonner |
-
----
+| :--- | :--- |
+| **Framework** | Next.js 16 (App Router) |
+| **Language** | TypeScript |
+| **Auth** | Auth.js v5 (NextAuth) — Credentials provider + JWT |
+| **ORM** | Prisma 7 |
+| **Database** | PostgreSQL |
+| **Encryption** | AES-256-GCM via Node.js `crypto` |
+| **UI** | Tailwind CSS v4 + Base UI + Shadcn/ui |
+| **Toasts** | Sonner |
 
 ## Role Hierarchy
 
 | Role | Permissions |
-|---|---|
-| **SUPERADMIN** | Full access to everything, including managing other SUPERADMINs |
-| **ADMIN** | Full CRUD on projects, secrets, notes, and users below ADMIN level |
-| **MODERATOR** | Create, edit, and delete secrets and notes; manage per-record sharing |
-| **USER** | Read and copy secrets/notes they have been granted access to |
-| **INTERN** | Same as USER — read-only, copy only |
+| :--- | :--- |
+| **SUPERADMIN** | Full access to everything, manages all user ranks, and approves pending submissions. |
+| **ADMIN** | Full CRUD on projects, secrets, and notes; approves submissions; manages users below ADMIN level. |
+| **MODERATOR** | Create, edit, and delete secrets/notes within explicitly assigned project scopes; manages per-record sharing. |
+| **USER** | Read and copy items they have access to; submits new secrets, notes, and credentials to the approval queue. |
+| **INTERN** | Read-only and copy access within scope; cannot submit items for approval or edit records. |
 
-Roles are enforced server-side on every action. No client-side trust.
-
----
+*Note: Roles are enforced server-side on every action. No client-side trust.*
 
 ## Prerequisites
 
-- [Node.js](https://nodejs.org/) 20+
-- [PostgreSQL](https://www.postgresql.org/) 14+
-- `npm` (comes with Node.js)
-
----
+* Node.js 20+
+* PostgreSQL 14+
+* SMTP Server (Required for sending email invitations)
 
 ## Setup
 
 ### 1. Clone the repository
-
 ```bash
-git clone https://github.com/your-username/credential-vault.git
+git clone [https://github.com/your-username/credential-vault.git](https://github.com/your-username/credential-vault.git)
 cd credential-vault
-```
-
-### 2. Install dependencies
-
-```bash
-npm install
-```
-
-### 3. Create the environment file
-
-Create a `.env` file at the project root with the following variables:
-
-```env
-# PostgreSQL connection string
-DATABASE_URL="postgresql://<user>:<password>@localhost:5432/credential_vault"
-
-# AES-256-GCM encryption key — must be exactly 64 hex characters (32 bytes)
-# Generate: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-ENCRYPTION_KEY=""
-
-# Auth.js secret — used to sign JWT tokens
-# Generate: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-NEXTAUTH_SECRET=""
-NEXTAUTH_URL="http://localhost:3000"
-
-# Master key for server-side secret encryption — keep separate from ENCRYPTION_KEY
-# Generate: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-MASTER_KEY=""
-```
-
-> **Important** — `ENCRYPTION_KEY` and `MASTER_KEY` must each be a 64-character hex string. If you change them after secrets have been stored, existing secrets cannot be decrypted.
-
-### 4. Set up the database
-
-```bash
-npx prisma db push
-```
-
-### 5. (Optional) Seed demo data
-
-```bash
-npx tsx prisma/seed.ts
-```
-
-Seed credentials (all use password `Password1!`):
-
-| Role | Email |
-|---|---|
-| SUPERADMIN | superadmin@vault.dev |
-| ADMIN | admin@vault.dev |
-| MODERATOR | moderator@vault.dev |
-| USER | user@vault.dev |
-| INTERN | intern@vault.dev |
-
-Delete seed users from the **User Management** page or via Prisma Studio once you no longer need them.
-
-### 6. Start the development server
-
-```bash
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000). You will be redirected to `/login`. Register your first account — new accounts receive the `USER` role by default. Promote yourself to `SUPERADMIN` via Prisma Studio (`npx prisma studio`) once your account exists.
-
----
-
-## Database Management
-
-### Prisma Studio (visual editor)
-
-```bash
-npx prisma studio
-```
-
-Opens at [http://localhost:5555](http://localhost:5555).
-
-### Apply schema changes
-
-```bash
-npx prisma db push
-```
-
-### Regenerate the Prisma client
-
-```bash
-npx prisma generate
-```
-
----
-
-## Project Structure
-
-```
-credential_vault/
-├── app/
-│   ├── actions/          # Server actions (auth, secrets, notes, projects, users, sharing)
-│   ├── dashboard/        # Dashboard pages (overview, projects, notes, users)
-│   ├── login/            # Sign-in page
-│   ├── register/         # Registration page
-│   └── api/auth/         # Auth.js API route handler
-├── components/
-│   ├── dashboard/        # Dashboard UI components (dialogs, buttons, sidebar)
-│   ├── ui/               # Base UI / Shadcn primitives
-│   ├── CopyButton.tsx    # Decrypt-and-copy action
-│   └── EnvFileImporter.tsx  # .env paste / upload importer
-├── lib/
-│   ├── crypto.ts         # AES-256-GCM encrypt / decrypt helpers
-│   ├── env-parser.ts     # .env file text parser
-│   ├── permissions.ts    # RBAC role rank helpers
-│   ├── prisma.ts         # Prisma client singleton
-│   └── queries/          # Reusable DB query helpers
-├── prisma/
-│   ├── schema.prisma     # Database schema
-│   └── seed.ts           # Demo data seed script
-├── auth.config.ts        # Edge-compatible NextAuth configuration
-├── auth.ts               # Full NextAuth configuration (Node.js only)
-├── proxy.ts              # Edge middleware (route protection)
-└── prisma.config.ts      # Prisma 7 datasource configuration
-```
-
----
-
-## Security Notes
-
-- Secret values are encrypted with **AES-256-GCM** before being written to the database. The key, IV, and auth tag are all stored; the plaintext value is never persisted.
-- All permission checks happen **server-side** in Next.js Server Actions. Client-side UI gating is cosmetic only.
-- The JWT session re-fetches the user's role from the database on every request, so role changes propagate immediately.
-- Deleting a project cascades to all its secrets and notes.
-- **Never commit your `.env` file.** It is already excluded by `.gitignore`.
-
----
-
-## Production Build
-
-```bash
-npm run build
-npm run start
-```
-
-Set `NEXTAUTH_URL` to your production domain before building.
-
----
-
-## License
-
-MIT
