@@ -42,6 +42,12 @@ model User {
   ownedProjects   Project[] @relation("ProjectOwner")
   updatedNotes    Note[]    @relation("NoteUpdater")
 
+  credentialSectionsOwned   CredentialSection[] @relation("CredentialSectionOwner")
+  credentialSectionsUpdated CredentialSection[] @relation("CredentialSectionUpdater")
+  credentialKeysOwned       CredentialKey[]     @relation("CredentialKeyOwner")
+  credentialKeysUpdated     CredentialKey[]     @relation("CredentialKeyUpdater")
+  sharedCredentialSections  CredentialSection[] @relation("CredentialSectionAccess")
+
   /** Explicit project membership (ADMIN/SUPERADMIN assignments on User Management). */
   projectMembers ProjectMember[]
 
@@ -54,6 +60,8 @@ model User {
   pendingSecretSubmissionsReviewed  PendingSecretSubmission[] @relation("PendingSecretReviewer")
   pendingNoteSubmissionsSubmitted   PendingNoteSubmission[]   @relation("PendingNoteSubmitter")
   pendingNoteSubmissionsReviewed    PendingNoteSubmission[]   @relation("PendingNoteReviewer")
+  pendingCredentialKeySubmissionsSubmitted PendingCredentialKeySubmission[] @relation("PendingCredentialKeySubmitter")
+  pendingCredentialKeySubmissionsReviewed  PendingCredentialKeySubmission[] @relation("PendingCredentialKeyReviewer")
 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -253,6 +261,75 @@ model Note {
   pendingEditSubmissions PendingNoteSubmission[] @relation("PendingNoteOriginal")
 
   @@index([status])
+}
+
+model CredentialSection {
+  id          String   @id @default(cuid())
+  name        String
+  description String?  @db.Text
+  status      VaultEntityStatus @default(ACTIVE)
+
+  ownerId     String
+  owner       User     @relation("CredentialSectionOwner", fields: [ownerId], references: [id])
+
+  updatedById String?
+  updatedBy   User?    @relation("CredentialSectionUpdater", fields: [updatedById], references: [id])
+
+  keys        CredentialKey[]
+
+  sharedWith  User[]   @relation("CredentialSectionAccess")
+
+  pendingCredentialKeySubmissions PendingCredentialKeySubmission[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status])
+  @@index([ownerId])
+  @@index([updatedById])
+}
+
+/** USER-submitted credential key awaiting ADMIN/SUPERADMIN approval. */
+model PendingCredentialKeySubmission {
+  id             String                  @id @default(cuid())
+  createdAt      DateTime                @default(now())
+  status         PendingSubmissionStatus @default(PENDING)
+  submitterId    String
+  submitter      User                    @relation("PendingCredentialKeySubmitter", fields: [submitterId], references: [id], onDelete: Cascade)
+  sectionId      String
+  section        CredentialSection       @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  label          String
+  value          String                  @db.Text
+  reviewedById   String?
+  reviewer       User?                   @relation("PendingCredentialKeyReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt     DateTime?
+  rejectionNote  String?                 @db.Text
+
+  @@index([status])
+  @@index([submitterId])
+  @@index([sectionId])
+}
+
+model CredentialKey {
+  id          String   @id @default(cuid())
+  sectionId   String
+  section     CredentialSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  label       String
+  value       String   @db.Text
+
+  ownerId     String
+  owner       User     @relation("CredentialKeyOwner", fields: [ownerId], references: [id])
+
+  updatedById String?
+  updatedBy   User?    @relation("CredentialKeyUpdater", fields: [updatedById], references: [id])
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([sectionId])
+  @@index([ownerId])
+  @@index([updatedById])
 }
 
 enum PendingSubmissionStatus {

@@ -15,7 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-import { Mail, Key, ArrowRight } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, Key, Mail } from "lucide-react";
 
 type LoginFormProps = {
   csrfToken:   string;
@@ -24,6 +24,8 @@ type LoginFormProps = {
 };
 
 export default function LoginForm({ csrfToken, callbackUrl, urlError }: LoginFormProps) {
+  const [showPassword, setShowPassword] = useState(false);
+
   return (
     <div className="w-full max-w-[400px] flex flex-col items-center">
       <div className="w-full space-y-2 mb-10 text-left">
@@ -65,12 +67,21 @@ export default function LoginForm({ csrfToken, callbackUrl, urlError }: LoginFor
               <Input
                 id="password"
                 name="password"
-                type="password"
+                type={showPassword ? "text" : "password"}
                 autoComplete="current-password"
                 placeholder="••••••••"
                 required
-                className="h-12 pl-11 bg-slate-100 border-transparent rounded-xl focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-blue-500/10 focus-visible:border-slate-200 transition-all text-sm font-medium"
+                className="h-12 pl-11 pr-11 bg-slate-100 border-transparent rounded-xl focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-blue-500/10 focus-visible:border-slate-200 transition-all text-sm font-medium"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 transition-colors hover:bg-slate-200/80 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-pressed={showPassword}
+              >
+                {showPassword ? <EyeOff className="size-4" strokeWidth={2} /> : <Eye className="size-4" strokeWidth={2} />}
+              </button>
             </div>
           </div>
 

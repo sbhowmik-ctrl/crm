@@ -10,6 +10,29 @@ import { assertActiveVaultSession } from "@/lib/session-guards";
 import { getVaultProjectIdsForActor } from "@/lib/queries/access";
 import { vaultWhereActive, VAULT_ENTITY_STATUS } from "@/lib/vault-entity-status";
 
+// --- Schemas ---
+
+const ProjectSchema = z.object({
+  name: z.string().trim().min(1, "Project name is required."),
+  description: z.string().trim().optional(),
+  /** When set, creates a subproject under this parent (must exist). */
+  parentId: z.string().cuid().optional(),
+});
+
+const UpdateProjectSchema = z.object({
+  projectId: z.string().min(1),
+  name: z.string().trim().min(1, "Project name is required."),
+  description: z.string().trim().optional(),
+});
+
+// --- Types ---
+
+export type ProjectResult =
+  | { success: true; id: string }
+  | { success: false; error: string };
+
+// --- Internal Helpers ---
+
 async function collectProjectSubtreeIds(rootId: string): Promise<string[]> {
   const rows = await prisma.project.findMany({
     select: { id: true, parentId: true },
@@ -30,17 +53,11 @@ async function collectProjectSubtreeIds(rootId: string): Promise<string[]> {
   return out;
 }
 
-const ProjectSchema = z.object({
-  name:        z.string().trim().min(1, "Project name is required."),
-  description: z.string().trim().optional(),
-  /** When set, creates a subproject under this parent (must exist). */
-  parentId: z.string().cuid().optional(),
-});
+// --- Actions ---
 
-export type ProjectResult =
-  | { success: true;  id: string }
-  | { success: false; error: string };
-
+/**
+ * Creates a new project or subproject.
+ */
 export async function createProject(
   _prev: ProjectResult | null,
   formData: FormData,
@@ -59,15 +76,15 @@ export async function createProject(
     typeof rawParent === "string" && rawParent.trim().length > 0 ? rawParent.trim() : undefined;
 
   const parsed = ProjectSchema.safeParse({
-    name:        formData.get("name"),
+    name: formData.get("name"),
     description: formData.get("description") || undefined,
-    parentId:    parentIdFromForm,
+    parentId: parentIdFromForm,
   });
   if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
 
   if (parsed.data.parentId) {
     const parent = await prisma.project.findFirst({
-      where:  { id: parsed.data.parentId, ...vaultWhereActive },
+      where: { id: parsed.data.parentId, ...vaultWhereActive },
       select: { id: true },
     });
     if (!parent) {
@@ -76,20 +93,20 @@ export async function createProject(
 
     if (actor.role === Role.MODERATOR) {
       const scope = await getVaultProjectIdsForActor({
-        id:   actor.id,
+        id: actor.id,
         role: actor.role,
       });
       if (!scope.includes(parsed.data.parentId)) {
         return {
           success: false,
-          error:     "You can only create subprojects under projects in your assignment scope.",
+          error: "You can only create subprojects under projects in your assignment scope.",
         };
       }
     }
   }
 
   const existing = await prisma.project.findUnique({
-    where:  { name: parsed.data.name },
+    where: { name: parsed.data.name },
     select: { id: true },
   });
   if (existing) {
@@ -98,27 +115,73 @@ export async function createProject(
 
   const project = await prisma.project.create({
     data: {
-      name:        parsed.data.name,
+      name: parsed.data.name,
       description: parsed.data.description,
       createdById: vault.user.id,
       updatedById: vault.user.id,
-      ownerId:     vault.user.id,
+      ownerId: vault.user.id,
       ...(parsed.data.parentId ? { parentId: parsed.data.parentId } : {}),
     },
     select: { id: true },
   });
 
   await logActivity({
-    actorId:    vault.user.id,
-    action:     ActivityAction.CREATE,
+    actorId: vault.user.id,
+    action: ActivityAction.CREATE,
     entityType: "project",
-    entityId:   project.id,
-    label:      parsed.data.name,
+    entityId: project.id,
+    label: parsed.data.name,
   });
 
   return { success: true, id: project.id };
 }
 
+/**
+ * Updates an existing project's title and description.
+ */
+export async function updateProject(
+  raw: { projectId: string; name: string; description?: string }
+): Promise<ProjectResult> {
+  const session = await auth();
+  const vault = assertActiveVaultSession(session);
+  if (!vault.ok) return { success: false, error: vault.error };
+
+  const actor = { id: vault.user.id, role: vault.user.role };
+  if (!canUserPerformAction(actor, null, "project", "update")) {
+    return { success: false, error: "Unauthorized to edit projects." };
+  }
+
+  const parsed = UpdateProjectSchema.safeParse(raw);
+  if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
+
+  try {
+    const updated = await prisma.project.update({
+      where: { id: parsed.data.projectId },
+      data: {
+        name: parsed.data.name,
+        description: parsed.data.description,
+        updatedById: vault.user.id,
+      },
+    });
+
+    await logActivity({
+      actorId: vault.user.id,
+      action: ActivityAction.UPDATE,
+      entityType: "project",
+      entityId: parsed.data.projectId,
+      label: parsed.data.name,
+    });
+
+    return { success: true, id: updated.id };
+  } catch (err) {
+    // Usually a P2002 Unique Constraint violation on the name
+    return { success: false, error: "Update failed. Project name may already be in use." };
+  }
+}
+
+/**
+ * Archives a project and all its sub-descendants.
+ */
 export async function archiveProject(projectId: string): Promise<ProjectResult> {
   const session = await auth();
   const vault = assertActiveVaultSession(session);
@@ -130,7 +193,7 @@ export async function archiveProject(projectId: string): Promise<ProjectResult> 
   }
 
   const project = await prisma.project.findFirst({
-    where:  { id: projectId, ...vaultWhereActive },
+    where: { id: projectId, ...vaultWhereActive },
     select: { id: true, name: true },
   });
   if (!project) return { success: false, error: "Project not found." };
@@ -151,21 +214,21 @@ export async function archiveProject(projectId: string): Promise<ProjectResult> 
 
   await prisma.project.update({
     where: { id: rootId },
-    data:  { status: VAULT_ENTITY_STATUS.ARCHIVED, updatedById: vault.user.id },
+    data: { status: VAULT_ENTITY_STATUS.ARCHIVED, updatedById: vault.user.id },
   });
 
   if (childIds.length > 0) {
     await prisma.project.updateMany({
       where: { id: { in: childIds } },
-      data:  { status: VAULT_ENTITY_STATUS.ARCHIVED },
+      data: { status: VAULT_ENTITY_STATUS.ARCHIVED },
     });
   }
 
   await logActivity({
-    actorId:    vault.user.id,
-    action:     ActivityAction.ARCHIVE,
+    actorId: vault.user.id,
+    action: ActivityAction.ARCHIVE,
     entityType: "project",
-    entityId:   projectId,
+    entityId: projectId,
     label:
       subtreeIds.length > 1
         ? `${project.name} (+${subtreeIds.length - 1} subproject(s))`
@@ -177,7 +240,6 @@ export async function archiveProject(projectId: string): Promise<ProjectResult> 
 
 /**
  * Restores an archived project (and its subprojects) back to ACTIVE status.
- * Same RBAC and scope rules as archiving.
  */
 export async function unarchiveProject(projectId: string): Promise<ProjectResult> {
   const session = await auth();
@@ -190,7 +252,7 @@ export async function unarchiveProject(projectId: string): Promise<ProjectResult
   }
 
   const project = await prisma.project.findFirst({
-    where:  { id: projectId, status: VAULT_ENTITY_STATUS.ARCHIVED },
+    where: { id: projectId, status: VAULT_ENTITY_STATUS.ARCHIVED },
     select: { id: true, name: true },
   });
   if (!project) return { success: false, error: "Project not found." };
@@ -211,21 +273,21 @@ export async function unarchiveProject(projectId: string): Promise<ProjectResult
 
   await prisma.project.update({
     where: { id: rootId },
-    data:  { status: VAULT_ENTITY_STATUS.ACTIVE, updatedById: vault.user.id },
+    data: { status: VAULT_ENTITY_STATUS.ACTIVE, updatedById: vault.user.id },
   });
 
   if (childIds.length > 0) {
     await prisma.project.updateMany({
       where: { id: { in: childIds }, status: VAULT_ENTITY_STATUS.ARCHIVED },
-      data:  { status: VAULT_ENTITY_STATUS.ACTIVE },
+      data: { status: VAULT_ENTITY_STATUS.ACTIVE },
     });
   }
 
   await logActivity({
-    actorId:    vault.user.id,
-    action:     ActivityAction.STATUS,
+    actorId: vault.user.id,
+    action: ActivityAction.STATUS,
     entityType: "project",
-    entityId:   projectId,
+    entityId: projectId,
     label:
       subtreeIds.length > 1
         ? `Restored ${project.name} (+${subtreeIds.length - 1} subproject(s))`

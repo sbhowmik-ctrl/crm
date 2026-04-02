@@ -1,6 +1,7 @@
 "use server";
 
 import { ActivityAction, NoteType } from "@prisma/client";
+import { revalidatePath } from "next/cache";
 
 import { auth }                 from "@/auth";
 import { logActivity }          from "@/lib/activity-log";
@@ -185,6 +186,82 @@ export async function removeUserFromNote(
     type: "ACCESS_REVOKED",
     userId: userId,
   });
+
+  return { success: true };
+}
+
+// ---------------------------------------------------------------------------
+// Credential section sharing (general vault — same editor gate as notes)
+// ---------------------------------------------------------------------------
+
+export async function addUserToCredentialSection(
+  sectionId: string,
+  userId: string,
+): Promise<SharingResult> {
+  const { actor, error } = await requireEditor();
+  if (error || !actor) return { success: false, error: error ?? "Unauthorized." };
+
+  const section = await prisma.credentialSection.findFirst({
+    where:  { id: sectionId, ...vaultWhereActive },
+    select: { id: true },
+  });
+  if (!section) return { success: false, error: "Credential section not found." };
+
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
+  if (!user) return { success: false, error: "User not found." };
+
+  await prisma.credentialSection.update({
+    where: { id: sectionId },
+    data:  { sharedWith: { connect: { id: userId } } },
+  });
+
+  await logActivity({
+    actorId:    actor.id,
+    action:     ActivityAction.ASSIGN,
+    entityType: "sharing_credential_section",
+    entityId:   sectionId,
+    label:      `Granted access to user ${userId}`,
+  });
+
+  revalidatePath("/dashboard/credentials");
+  revalidatePath(`/dashboard/credentials/${sectionId}`);
+
+  return { success: true };
+}
+
+export async function removeUserFromCredentialSection(
+  sectionId: string,
+  userId: string,
+): Promise<SharingResult> {
+  const { actor, error } = await requireEditor();
+  if (error || !actor) return { success: false, error: error ?? "Unauthorized." };
+
+  const section = await prisma.credentialSection.findFirst({
+    where:  { id: sectionId, ...vaultWhereActive },
+    select: { id: true },
+  });
+  if (!section) return { success: false, error: "Credential section not found." };
+
+  await prisma.credentialSection.update({
+    where: { id: sectionId },
+    data:  { sharedWith: { disconnect: { id: userId } } },
+  });
+
+  await logActivity({
+    actorId:    actor.id,
+    action:     ActivityAction.REMOVE,
+    entityType: "sharing_credential_section",
+    entityId:   sectionId,
+    label:      `Revoked access for user ${userId}`,
+  });
+
+  eventBus.emit("vault_event", {
+    type:   "ACCESS_REVOKED",
+    userId: userId,
+  });
+
+  revalidatePath("/dashboard/credentials");
+  revalidatePath(`/dashboard/credentials/${sectionId}`);
 
   return { success: true };
 }

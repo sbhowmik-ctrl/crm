@@ -120,7 +120,8 @@ export default async function NoteDetailPage({
                   return (
                     <figure className="my-4 flex flex-col items-start gap-1">
                       <a
-                        href={src}
+                        // If 'src' is definitely a string or Blob, convert it:
+                        href={typeof src === 'string' ? src : URL.createObjectURL(src)}
                         target="_blank"
                         rel="noreferrer"
                         className="text-xs font-medium text-blue-600 hover:underline"

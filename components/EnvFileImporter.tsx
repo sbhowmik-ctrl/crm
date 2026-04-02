@@ -220,7 +220,7 @@ export default function EnvFileImporter({ projectId, projectName, onImportSucces
   // Render
   // -------------------------------------------------------------------------
   return (
-    <div className="w-full space-y-4">
+    <div className="w-full min-w-0 space-y-4">
 
       {/* Hidden file input */}
       <input
@@ -255,16 +255,18 @@ export default function EnvFileImporter({ projectId, projectName, onImportSucces
         </button>
       </div>
 
-      {/* Textarea */}
-      <textarea
-        rows={7}
-        value={rawText}
-        onChange={(e) => handleTextChange(e.target.value)}
-        placeholder={"# Paste your .env content here\nDATABASE_URL=postgres://user:pass@localhost/db\nSTRIPE_SECRET_KEY=sk_live_..."}
-        spellCheck={false}
-        className="w-full resize-y rounded-lg border border-border bg-muted/30 p-3 font-mono text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-        disabled={isPending}
-      />
+      {/* Textarea — bounded height + horizontal scroll for long lines */}
+      <div className="max-h-[min(35vh,11rem)] min-w-0 overflow-auto rounded-lg border border-border bg-muted/30">
+        <textarea
+          rows={7}
+          value={rawText}
+          onChange={(e) => handleTextChange(e.target.value)}
+          placeholder={"# Paste your .env content here\nDATABASE_URL=postgres://user:pass@localhost/db\nSTRIPE_SECRET_KEY=sk_live_..."}
+          spellCheck={false}
+          className="box-border min-h-[8.75rem] w-full min-w-[min(100%,48rem)] resize-none bg-transparent p-3 font-mono text-sm whitespace-pre text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+          disabled={isPending}
+        />
+      </div>
 
       {/* No-pairs warning */}
       {rawText.trim().length > 0 && pairs.length === 0 && (
@@ -294,15 +296,15 @@ export default function EnvFileImporter({ projectId, projectName, onImportSucces
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-lg border border-border">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50 text-xs text-muted-foreground">
+          <div className="max-h-[min(50vh,22rem)] min-w-0 overflow-auto rounded-lg border border-border">
+            <table className="w-max min-w-full text-sm">
+              <thead className="sticky top-0 z-[1] bg-muted/50 text-xs text-muted-foreground backdrop-blur-sm">
                 <tr>
                   <th className="w-8 py-2 pl-3 pr-1 text-left font-medium"></th>
-                  <th className="py-2 pl-2 pr-4 text-left font-medium">Key</th>
-                  <th className="py-2 pl-2 pr-4 text-left font-medium">Value (masked)</th>
+                  <th className="whitespace-nowrap py-2 pl-2 pr-4 text-left font-medium">Key</th>
+                  <th className="whitespace-nowrap py-2 pl-2 pr-4 text-left font-medium">Value (masked)</th>
                   {importStatus === "done" && (
-                    <th className="py-2 pl-2 pr-3 text-right font-medium">Status</th>
+                    <th className="whitespace-nowrap py-2 pl-2 pr-3 text-right font-medium">Status</th>
                   )}
                 </tr>
               </thead>
@@ -323,8 +325,8 @@ export default function EnvFileImporter({ projectId, projectName, onImportSucces
                           className="h-4 w-4 rounded border-border"
                         />
                       </td>
-                      <td className="py-2 pl-2 pr-4 font-mono font-medium">{pair.key}</td>
-                      <td className="py-2 pl-2 pr-4 font-mono text-muted-foreground">{maskValue(pair.value)}</td>
+                      <td className="whitespace-nowrap py-2 pl-2 pr-4 font-mono font-medium">{pair.key}</td>
+                      <td className="whitespace-nowrap py-2 pl-2 pr-4 font-mono text-muted-foreground">{maskValue(pair.value)}</td>
                       {importStatus === "done" && (
                         <td className="py-2 pl-2 pr-3 text-right">
                           {outcome ? <StatusBadge outcome={outcome} /> : null}

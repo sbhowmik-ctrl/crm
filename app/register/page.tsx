@@ -11,21 +11,7 @@ import { Label }    from "@/components/ui/label";
 import { registerAction } from "@/app/actions/auth";
 
 import { getSafeInternalCallbackUrl } from "@/lib/auth-callback-url";
-
-function EyeIcon({ open }: { open: boolean }) {
-  return open ? (
-    <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" aria-hidden>
-      <path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z" stroke="currentColor" strokeWidth="1.25" strokeLinejoin="round" />
-      <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.25" />
-    </svg>
-  ) : (
-    <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" aria-hidden>
-      <path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z" stroke="currentColor" strokeWidth="1.25" strokeLinejoin="round" />
-      <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.25" />
-      <path d="M2 2l12 12" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" />
-    </svg>
-  );
-}
+import { Eye, EyeOff } from "lucide-react";
 
 export default function RegisterPage() {
   const [showPassword, setShowPassword]           = useState(false);
@@ -166,11 +152,11 @@ export default function RegisterPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 transition-colors hover:bg-slate-200/80 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30"
                   aria-label={showPassword ? "Hide password" : "Show password"}
-                  tabIndex={-1}
+                  aria-pressed={showPassword}
                 >
-                  <EyeIcon open={showPassword} />
+                  {showPassword ? <EyeOff className="size-4" strokeWidth={2} /> : <Eye className="size-4" strokeWidth={2} />}
                 </button>
               </div>
             </div>
@@ -199,11 +185,11 @@ export default function RegisterPage() {
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                  aria-label={showConfirmPassword ? "Hide password" : "Show password"}
-                  tabIndex={-1}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 transition-colors hover:bg-slate-200/80 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30"
+                  aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+                  aria-pressed={showConfirmPassword}
                 >
-                  <EyeIcon open={showConfirmPassword} />
+                  {showConfirmPassword ? <EyeOff className="size-4" strokeWidth={2} /> : <Eye className="size-4" strokeWidth={2} />}
                 </button>
               </div>
             </div>

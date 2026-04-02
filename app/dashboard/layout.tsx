@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Role } from "@prisma/client";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
@@ -35,6 +36,9 @@ export default async function DashboardLayout({
     image: dbProfile?.image ?? null,
   };
 
+  const showActivityBell =
+    session.user.role !== Role.USER && session.user.role !== Role.INTERN;
+
   return (
     <SidebarProvider>
       <AppSidebar user={user} />
@@ -50,25 +54,26 @@ export default async function DashboardLayout({
           </div>
         </header>
 
-        <main className="flex-1 overflow-auto p-12 pt-8">
+        <main className="min-w-0 flex-1 overflow-auto p-12 pt-8">
           <SSEProvider>
             {children}
           </SSEProvider>
         </main>
         
-        {/* Floating Notification Icon → Activity feed */}
-        <div className="fixed bottom-8 right-8 z-50">
-          <Link
-            href="/dashboard/activity"
-            aria-label="Open activity feed"
-            className="block"
-          >
-            <div className="bg-[#0c1421] text-white p-5 rounded-2xl shadow-2xl cursor-pointer relative group transition-transform hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/70">
-              <Bell className="size-6" />
-              <div className="absolute top-5 right-5 size-2.5 bg-red-500 rounded-full border-2 border-[#0c1421]" />
-            </div>
-          </Link>
-        </div>
+        {/* {showActivityBell && (
+          <div className="fixed bottom-8 right-8 z-50">
+            <Link
+              href="/dashboard/activity"
+              aria-label="Open activity feed"
+              className="block"
+            >
+              <div className="bg-[#0c1421] text-white p-5 rounded-2xl shadow-2xl cursor-pointer relative group transition-transform hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/70">
+                <Bell className="size-6" />
+                <div className="absolute top-5 right-5 size-2.5 bg-red-500 rounded-full border-2 border-[#0c1421]" />
+              </div>
+            </Link>
+          </div>
+        )} */}
       </SidebarInset>
     </SidebarProvider>
   );

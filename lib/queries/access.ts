@@ -9,9 +9,8 @@
  *     descendants). Full visibility of secrets/notes in those projects (not owner/shared only).
  *   - **USER / INTERN** — direct `ProjectMember` assignments **plus every ancestor** (parent chain
  *     up to the root). **Siblings** (other subprojects under the same parent) are **not** included.
- *     Must pass `allowedAccessWhere` for secrets (owner or `sharedWith`).
- *
- * Condition 3 (owner/shared) is expressed via `allowedAccessWhere()`.
+ *     Within those projects they see **all** secrets and project-linked notes (same as MODERATOR).
+ *     For NORMAL (non–project) notes, still owner or `sharedWith` only — via `allowedAccessWhere()`.
  */
 
 import { Role } from "@prisma/client";
@@ -177,8 +176,9 @@ export async function getVaultProjectIdsForActor(actor: QueryActor): Promise<str
  * Returns a Prisma `where` fragment that limits results to records the actor
  * either owns or has been explicitly granted access to via `sharedWith`.
  *
- * Intended for USER / INTERN roles only — callers should short-circuit with
- * `hasUnrestrictedProjectScope()` / MODERATOR handling first.
+ * Intended for **NORMAL** notes and similar — not for project-scoped secrets/notes when the actor
+ * is already a `ProjectMember`. Callers should short-circuit with `hasUnrestrictedProjectScope()`
+ * and project-scope handling first.
  *
  * Usage:
  *   prisma.secret.findMany({ where: { projectId, ...allowedAccessWhere(actor) } })

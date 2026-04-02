@@ -13,8 +13,7 @@ export type DecryptResult =
  *
  * Security:
  *  - Session is re-validated on every call (the client cannot forge the role).
- *  - Access control is delegated to getDecryptedSecretById, which enforces the
- *    3-condition rule (Superadmin | role ≥ Moderator | explicitly in sharedWith).
+ *  - Access control is delegated to getDecryptedSecretById (project scope + admins).
  *  - The plaintext is never stored in the DOM — it only briefly exists in memory
  *    on the server and is then written directly to the client's clipboard.
  */
@@ -60,8 +59,7 @@ export type DecryptAllResult =
  * them as key/plaintext pairs so the client can format and copy them as a
  * .env file.
  *
- * The same 3-condition access rule applies to each secret individually —
- * secrets the actor cannot access are silently excluded rather than erroring.
+ * Same scope as list queries — secrets outside the actor’s access are excluded.
  */
 export async function decryptAllProjectSecrets(projectId: string): Promise<DecryptAllResult> {
   const session = await auth();

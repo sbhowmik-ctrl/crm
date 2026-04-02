@@ -120,7 +120,15 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    /* Hide scrollbars while keeping scroll / touch / wheel behavior */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
   }
+  *::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+
   body {
     @apply bg-background text-foreground;
   }

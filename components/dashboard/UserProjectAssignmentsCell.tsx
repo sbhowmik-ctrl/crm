@@ -497,7 +497,7 @@ export default function UserProjectAssignmentsCell({
                     disabled={isPending}
                     onClick={openBatchConfirm}
                   >
-                    Authorize integration ({selectionCount})
+                    assign ({selectionCount})
                   </Button>
                 )}
               </div>

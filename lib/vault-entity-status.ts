@@ -41,6 +41,11 @@ export function noteWhereForVaultRead(actor: { role: Role }) {
   return vaultEntityStatusWhereForRead(actor);
 }
 
+/** Same visibility rules for `CredentialSection.status` (list/detail reads). */
+export function credentialSectionWhereForVaultRead(actor: { role: Role }) {
+  return vaultEntityStatusWhereForRead(actor);
+}
+
 export type VaultEntityStatusValue =
   (typeof VAULT_ENTITY_STATUS)[keyof typeof VAULT_ENTITY_STATUS];
 

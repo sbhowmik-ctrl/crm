@@ -5,7 +5,8 @@
  *
  *   1. ADMIN / SUPERADMIN → all notes.
  *   2. MODERATOR          → project-linked notes only in assigned projects; all such notes there.
- *   3. USER / INTERN      → owner OR sharedWith (and project membership where applicable).
+ *   3. USER / INTERN      → all PROJECT_BASED notes in assigned projects; NORMAL notes still
+ *     owner OR sharedWith only.
  */
 
 import { NoteType, Role } from "@prisma/client";
@@ -83,14 +84,17 @@ export async function getNoteById(id: string, actor: QueryActor) {
         { id, ...noteRead },
         {
           OR: [
-            { type: NoteType.NORMAL },
-            { type: NoteType.PROJECT_BASED, projectId: { in: scope } },
-          ],
-        },
-        {
-          OR: [
-            { ownerId: actor.id },
-            { sharedWith: { some: { id: actor.id } } },
+            {
+              type: NoteType.NORMAL,
+              OR: [
+                { ownerId: actor.id },
+                { sharedWith: { some: { id: actor.id } } },
+              ],
+            },
+            {
+              type:      NoteType.PROJECT_BASED,
+              projectId: { in: scope },
+            },
           ],
         },
       ],
@@ -123,18 +127,8 @@ export async function getNotesByProject(projectId: string, actor: QueryActor) {
   const scope = await getVaultProjectIdsForActor(actor);
   if (!scope.includes(projectId)) return [];
 
-  if (actor.role === Role.MODERATOR) {
-    return prisma.note.findMany({
-      where:   baseWhere,
-      select:  NOTE_SELECT,
-      orderBy: { updatedAt: "desc" },
-    });
-  }
-
   return prisma.note.findMany({
-    where: {
-      AND: [baseWhere, allowedAccessWhere(actor)],
-    },
+    where:   baseWhere,
     select:  NOTE_SELECT,
     orderBy: { updatedAt: "desc" },
   });
@@ -202,9 +196,27 @@ export async function getAccessibleNotes(actor: QueryActor) {
     });
   }
 
+  const scope = await getVaultProjectIdsForActor(actor);
   return prisma.note.findMany({
     where: {
-      AND: [vaultWhereActive, allowedAccessWhere(actor)],
+      AND: [
+        vaultWhereActive,
+        {
+          OR: [
+            {
+              type: NoteType.NORMAL,
+              OR: [
+                { ownerId: actor.id },
+                { sharedWith: { some: { id: actor.id } } },
+              ],
+            },
+            {
+              type:      NoteType.PROJECT_BASED,
+              projectId: { in: scope },
+            },
+          ],
+        },
+      ],
     },
     select:  NOTE_SELECT,
     orderBy: { updatedAt: "desc" },
@@ -249,9 +261,27 @@ export async function getAccessibleNotesByStatus(
     });
   }
 
+  const scope = await getVaultProjectIdsForActor(actor);
   return prisma.note.findMany({
     where: {
-      AND: [statusWhere, allowedAccessWhere(actor)],
+      AND: [
+        statusWhere,
+        {
+          OR: [
+            {
+              type: NoteType.NORMAL,
+              OR: [
+                { ownerId: actor.id },
+                { sharedWith: { some: { id: actor.id } } },
+              ],
+            },
+            {
+              type:      NoteType.PROJECT_BASED,
+              projectId: { in: scope },
+            },
+          ],
+        },
+      ],
     },
     select:  NOTE_SELECT,
     orderBy: { updatedAt: "desc" },

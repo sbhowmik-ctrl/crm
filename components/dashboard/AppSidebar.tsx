@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   Settings,
   LogOut,
+  Key,
 } from "lucide-react";
 
 import {
@@ -50,15 +51,25 @@ export default function AppSidebar({ user }: { user: SidebarUser }) {
   const fullNav: NavItem[] = [
     { label: "Dashboard",       href: "/dashboard",           icon: LayoutDashboard },
     { label: "Projects",        href: "/dashboard/projects", icon: FolderOpen },
+    { label: "Credentials",     href: "/dashboard/credentials", icon: Key },
     { label: "General Notes",   href: "/dashboard/notes",    icon: FileText },
     { label: "User Management", href: "/dashboard/users",    icon: Users },
     { label: "Approvals",       href: "/dashboard/approvals", icon: ShieldCheck },
     { label: "Activity",        href: "/dashboard/activity", icon: Clock },
   ];
 
+  const moderatorHidden = new Set<string>(["/dashboard/users", "/dashboard/approvals"]);
+
   const mainNav: NavItem[] = memberOnly
-    ? fullNav.filter((item) => item.href === "/dashboard/projects" || item.href === "/dashboard/notes")
-    : fullNav;
+    ? fullNav.filter(
+        (item) =>
+          item.href === "/dashboard/projects" ||
+          item.href === "/dashboard/notes" ||
+          item.href === "/dashboard/credentials",
+      )
+    : user.role === Role.MODERATOR
+      ? fullNav.filter((item) => !moderatorHidden.has(item.href))
+      : fullNav;
 
   const handleSignOut = async () => {
     await signOut({ callbackUrl: "/login" });

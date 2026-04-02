@@ -26,6 +26,7 @@ import EditNoteDialog        from "@/components/dashboard/EditNoteDialog";
 import ArchiveNoteButton      from "@/components/dashboard/ArchiveNoteButton";
 import CreateSubprojectDialog from "@/components/dashboard/CreateSubprojectDialog";
 import LeaveProjectButton   from "@/components/dashboard/LeaveProjectButton";
+import EditProjectDialog    from "@/components/dashboard/EditProjectDialog"; // <-- ADDED IMPORT
 
 function formatDate(d: Date) {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
@@ -51,6 +52,7 @@ export default async function ProjectDetailPage({
     isActive: session.user.isActive,
   };
   const canCreateProject = canUserPerformAction(actor, null, "project", "create");
+  const canUpdateProject = canUserPerformAction(actor, null, "project", "update"); // <-- ADDED PERMISSION CHECK
 
   const project = await prisma.project.findFirst({
     where: { id, ...projectWhereForVaultRead(actor) },
@@ -116,6 +118,13 @@ export default async function ProjectDetailPage({
 
   /** Archived projects stay readable; mutations are disabled. */
   const canMutateVault = canModeratorPlusVault && !isArchivedProject;
+  
+  /** Determine if the user has permission to edit THIS specific project. */
+  const canEditProject = 
+    canUpdateProject && 
+    !isArchivedProject && 
+    (hasUnrestrictedProjectScope(actor.role) || 
+      (actor.role === Role.MODERATOR && vaultScope !== null && vaultScope.includes(id)));
 
   /** USER may request new secrets/notes for admin approval (not interns). */
   const canUserRequestPendingSubmission =
@@ -129,6 +138,25 @@ export default async function ProjectDetailPage({
     (actor.role === Role.USER ||
       actor.role === Role.INTERN ||
       actor.role === Role.MODERATOR);
+
+  const ADMIN_ASSIGN_ROLES = new Set<Role>([Role.ADMIN, Role.SUPERADMIN]);
+  const canManageProjectAssignments =
+    ADMIN_ASSIGN_ROLES.has(actor.role) && !isArchivedProject;
+
+  const projectMembersForAssign = canManageProjectAssignments
+    ? await prisma.projectMember.findMany({
+        where: { projectId: id },
+        select: {
+          user: { select: { id: true, name: true, email: true, role: true } },
+        },
+      })
+    : [];
+
+  const currentProjectAssignees = projectMembersForAssign.map((m) => ({
+    id:    m.user.id,
+    name:  m.user.name,
+    email: m.user.email,
+  }));
 
   const [secrets, notes, allUsers] = await Promise.all([
     getSecretsByProject(id, actor),
@@ -153,7 +181,7 @@ export default async function ProjectDetailPage({
     createdByLabel;
 
   return (
-    <div className="space-y-8">
+    <div className="min-w-0 space-y-8">
 
       {/* Breadcrumb + header */}
       <div>
@@ -171,6 +199,16 @@ export default async function ProjectDetailPage({
           <div className="flex min-w-0 flex-col gap-1">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-2xl font-bold tracking-tight">{project.name}</h1>
+              {/* <-- ADDED EDIT BUTTON HERE --> */}
+              {canEditProject && (
+                <EditProjectDialog
+                  project={{
+                    id: project.id,
+                    name: project.name,
+                    description: project.description,
+                  }}
+                />
+              )}
               {isArchivedProject && (
                 <span className="rounded-md border border-muted-foreground/30 bg-muted/50 px-2 py-0.5 text-xs font-medium text-muted-foreground">
                   Archived
@@ -189,9 +227,21 @@ export default async function ProjectDetailPage({
               </span>
             </div>
           </div>
-          {canLeaveProject && (
-            <LeaveProjectButton projectId={id} projectName={project.name} />
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {canManageProjectAssignments && (
+              <ManageAccessDialog
+                type="project"
+                resourceId={id}
+                resourceName={project.name}
+                currentAccess={currentProjectAssignees}
+                allUsers={allUsers}
+                triggerLabel="Assign to"
+              />
+            )}
+            {canLeaveProject && (
+              <LeaveProjectButton projectId={id} projectName={project.name} />
+            )}
+          </div>
         </div>
         {project.parent && (
           <p className="mt-1 text-sm text-muted-foreground">
@@ -280,28 +330,28 @@ export default async function ProjectDetailPage({
             </p>
           </div>
         ) : (
-          <div className="overflow-hidden rounded-xl border border-border">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50">
+          <div className="max-h-[min(70vh,40rem)] min-w-0 overflow-auto rounded-xl border border-border">
+            <table className="w-max min-w-full text-sm">
+              <thead className="sticky top-0 z-[1] bg-muted/95 backdrop-blur-sm">
                 <tr className="text-xs text-muted-foreground">
-                  <th className="py-2.5 pl-4 pr-3 text-left font-medium">Key</th>
-                  <th className="py-2.5 px-3 text-left font-medium">Owner</th>
-                  <th className="py-2.5 px-3 text-left font-medium">Created</th>
-                  <th className="py-2.5 pl-3 pr-4 text-right font-medium">Actions</th>
+                  <th className="whitespace-nowrap py-2.5 pl-4 pr-3 text-left font-medium">Key</th>
+                  <th className="whitespace-nowrap py-2.5 px-3 text-left font-medium">Owner</th>
+                  <th className="whitespace-nowrap py-2.5 px-3 text-left font-medium">Created</th>
+                  <th className="whitespace-nowrap py-2.5 pl-3 pr-4 text-right font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {secrets.map((s) => (
                   <tr key={s.id} className="bg-card hover:bg-muted/20 transition-colors">
                     <td className="py-3 pl-4 pr-3">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-medium">{s.key}</span>
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className="font-mono font-medium whitespace-nowrap">{s.key}</span>
                         <span className="font-mono text-xs text-muted-foreground tracking-widest select-none">
                           ••••••••
                         </span>
                       </div>
                     </td>
-                    <td className="py-3 px-3 text-muted-foreground">
+                    <td className="whitespace-nowrap py-3 px-3 text-muted-foreground">
                       {s.owner.name ?? s.owner.email}
                     </td>
                     <td className="py-3 px-3 text-muted-foreground">
@@ -313,15 +363,6 @@ export default async function ProjectDetailPage({
                         <CopyButton secretId={s.id} />
                         {canMutateVault && (
                           <EditSecretDialog secretId={s.id} secretKey={s.key} />
-                        )}
-                        {canMutateVault && (
-                          <ManageAccessDialog
-                            type="secret"
-                            resourceId={s.id}
-                            resourceName={s.key}
-                            currentAccess={s.sharedWith}
-                            allUsers={allUsers}
-                          />
                         )}
                         {canMutateVault && (
                           <DeleteSecretButton secretId={s.id} secretKey={s.key} />

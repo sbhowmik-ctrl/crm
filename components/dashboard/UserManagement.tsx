@@ -359,8 +359,8 @@ export default function UserManagement({ users, currentUserId, currentUserRole }
         </div>
       </div>
 
-      <div className="rounded-[2rem] border border-white/40 bg-white/30 backdrop-blur-md overflow-hidden shadow-2xl">
-        <div className="overflow-x-auto">
+      <div className="max-h-[min(80vh,48rem)] overflow-auto rounded-[2rem] border border-white/40 bg-white/30 shadow-2xl backdrop-blur-md">
+        <div className="min-w-0 overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow className="border-b border-white/10 hover:bg-transparent">

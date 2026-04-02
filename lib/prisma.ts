@@ -9,10 +9,12 @@ if (!process.env.DATABASE_URL) {
  * Bump this when you add/change Prisma models so `next dev` does not keep an
  * old PrismaClient instance missing new delegates (e.g. `projectMember`).
  */
-const PRISMA_SCHEMA_REVISION = 12;
+const PRISMA_SCHEMA_REVISION = 17;
 
 const globalForPrisma = globalThis as unknown as {
   prisma: ReturnType<typeof buildPrismaClient> | undefined;
+  /** Unwrapped client — `$extends()` can hide some model delegates on the extended proxy; base always has full API. */
+  prismaBase: PrismaClient | undefined;
   prismaSchemaRevision: number | undefined;
 };
 
@@ -20,6 +22,7 @@ const globalForPrisma = globalThis as unknown as {
 // In development, prefer correctness over reusing a singleton.
 if (process.env.NODE_ENV === "development") {
   globalForPrisma.prisma = undefined;
+  globalForPrisma.prismaBase = undefined;
   globalForPrisma.prismaSchemaRevision = undefined;
 }
 
@@ -113,12 +116,18 @@ function clientHasExpectedDelegates(client: unknown): boolean {
     activityLog?: { findMany?: unknown; deleteMany?: unknown };
     userInvitation?: { findMany?: unknown; deleteMany?: unknown };
     pendingSecretSubmission?: { findMany?: unknown };
+    pendingCredentialKeySubmission?: { findMany?: unknown; create?: unknown };
+    credentialSection?: { findMany?: unknown; create?: unknown };
   };
   return (
     typeof c.activityLog?.findMany === "function" &&
     typeof c.userInvitation?.findMany === "function" &&
     typeof c.userInvitation?.deleteMany === "function" &&
-    typeof c.pendingSecretSubmission?.findMany === "function"
+    typeof c.pendingSecretSubmission?.findMany === "function" &&
+    typeof c.pendingCredentialKeySubmission?.findMany === "function" &&
+    typeof c.pendingCredentialKeySubmission?.create === "function" &&
+    typeof c.credentialSection?.findMany === "function" &&
+    typeof c.credentialSection?.create === "function"
   );
 }
 

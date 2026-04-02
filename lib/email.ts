@@ -75,7 +75,7 @@ export async function sendInviteEmail(params: SendInviteEmailParams): Promise<vo
 
 export type PendingApprovalEmailParams = {
   toAddresses:    string[];
-  kind:           "secret" | "note";
+  kind:           "secret" | "note" | "credential_key";
   summaryLine:    string;
   submitterLabel: string;
 };
@@ -94,7 +94,12 @@ export async function sendPendingApprovalNotificationEmail(
 
   const base = getAppBaseUrl().replace(/\/$/, "");
   const approvalsUrl = `${base}/dashboard/approvals`;
-  const kindLabel = params.kind === "secret" ? "environment secret" : "note";
+  const kindLabel =
+    params.kind === "secret"
+      ? "environment secret"
+      : params.kind === "credential_key"
+        ? "credential key"
+        : "note";
 
   const text = [
     `A user (${params.submitterLabel}) submitted a ${kindLabel} for approval.`,
@@ -136,7 +141,9 @@ export async function sendPendingApprovalNotificationEmail(
   await transporter.sendMail({
     from:    `"Credential Vault" <${from}>`,
     to:      valid.join(", "),
-    subject: `[Credential Vault] Approval needed: ${params.kind === "secret" ? "Secret" : "Note"}`,
+    subject: `[Credential Vault] Approval needed: ${
+      params.kind === "secret" ? "Secret" : params.kind === "credential_key" ? "Credential key" : "Note"
+    }`,
     text,
     html,
   });

@@ -13,6 +13,7 @@ import {
   assertModeratorAssignedToProject,
   assertUserInternAssignedToProject,
 } from "@/lib/project-scope-guards";
+import { getVaultProjectIdsForActor } from "@/lib/queries/access";
 import { vaultWhereActive, VAULT_ENTITY_STATUS } from "@/lib/vault-entity-status";
 import { eventBus } from "@/lib/event-bus";
 
@@ -264,14 +265,24 @@ export async function updateNote(rawInput: UpdateNoteInput): Promise<UpdateNoteR
     | null = null;
 
   if (isUserEditor) {
-    // USER: must have access (owner or explicitly shared).
+    const projectScope = await getVaultProjectIdsForActor(actor);
+    // USER: general notes — owner or shared; project notes — any in a project they belong to.
     existing = await prisma.note.findFirst({
       where: {
         id:     noteId,
         status: VAULT_ENTITY_STATUS.ACTIVE,
         OR: [
-          { ownerId: actor.id },
-          { sharedWith: { some: { id: actor.id } } },
+          {
+            type: NoteType.NORMAL,
+            OR: [
+              { ownerId: actor.id },
+              { sharedWith: { some: { id: actor.id } } },
+            ],
+          },
+          {
+            type:      NoteType.PROJECT_BASED,
+            projectId: { in: projectScope },
+          },
         ],
       },
       select: { id: true, type: true, projectId: true },
