@@ -1,49 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { signIn } from "next-auth/react";
-
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 
 import { acceptInvitation } from "@/app/actions/invitations";
-
 import { getSafeInternalCallbackUrl } from "@/lib/auth-callback-url";
-
-function EyeIcon({ open }: { open: boolean }) {
-  return open ? (
-    <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" aria-hidden>
-      <path
-        d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z"
-        stroke="currentColor"
-        strokeWidth="1.25"
-        strokeLinejoin="round"
-      />
-      <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.25" />
-    </svg>
-  ) : (
-    <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" aria-hidden>
-      <path
-        d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z"
-        stroke="currentColor"
-        strokeWidth="1.25"
-        strokeLinejoin="round"
-      />
-      <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.25" />
-      <path d="M2 2l12 12" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" />
-    </svg>
-  );
-}
 
 export default function InviteAcceptForm({
   token,
@@ -54,56 +23,35 @@ export default function InviteAcceptForm({
   email:     string;
   roleLabel: string;
 }) {
-  const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
+  async function handleAccept() {
     setError(null);
-    const form = e.currentTarget;
-    const fd = new FormData(form);
-    const password = (fd.get("password") as string) ?? "";
-
     setIsPending(true);
+
     try {
-      const created = await acceptInvitation(null, fd);
-      if (!created.success) {
-        setError(created.error);
+      // 1. Prepare the FormData for the server action
+      const fd = new FormData();
+      fd.append("token", token);
+
+      // 2. Call the action to pre-create/update the user record with the invited role
+      const result = await acceptInvitation(null, fd);
+
+      if (!result.success) {
+        setError(result.error);
+        setIsPending(false);
         return;
       }
 
+      // 3. Trigger Google OAuth sign-in. 
+      // Because 'allowDangerousEmailAccountLinking' is enabled in auth.ts,
+      // Auth.js will link this Google login to the record just updated above.
       const afterLogin = getSafeInternalCallbackUrl("/dashboard/projects");
-      const result = await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
-        callbackUrl: afterLogin,
-      });
-
-      if (result?.error) {
-        setError("Account created but sign-in failed. Please sign in on the login page.");
-        return;
-      }
-
-      if (result?.ok) {
-        if (result.url) {
-          try {
-            const u = new URL(result.url, window.location.origin);
-            if (u.origin === window.location.origin) {
-              window.location.assign(`${u.pathname}${u.search}${u.hash}`);
-              return;
-            }
-          } catch {
-            /* fall through */
-          }
-        }
-        window.location.assign(afterLogin);
-        return;
-      }
-
-      setError("Something went wrong. Please try signing in.");
-    } finally {
+      await signIn("google", { callbackUrl: afterLogin });
+      
+    } catch (err) {
+      setError("An unexpected error occurred. Please try again.");
       setIsPending(false);
     }
   }
@@ -113,86 +61,36 @@ export default function InviteAcceptForm({
       <CardHeader className="space-y-1 pb-4">
         <CardTitle className="text-2xl font-semibold tracking-tight">Accept invitation</CardTitle>
         <CardDescription>
-          Create your account for <span className="font-medium text-foreground">{email}</span> as{" "}
+          Join the vault as <span className="font-medium text-foreground">{email}</span> with the role of{" "}
           <span className="font-medium text-foreground">{roleLabel}</span>.
         </CardDescription>
       </CardHeader>
 
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input type="hidden" name="token" value={token} />
+      <CardContent className="space-y-4 pt-2">
+        {error && (
+          <p className="text-[11px] font-bold text-red-500 uppercase tracking-widest bg-red-50 p-3 rounded-lg border border-red-100" role="alert">
+            {error}
+          </p>
+        )}
 
-          <div className="space-y-1.5">
-            <Label htmlFor="name">Your name</Label>
-            <Input
-              id="name"
-              name="name"
-              type="text"
-              autoComplete="name"
-              placeholder="Jane Doe"
-              required
-              disabled={isPending}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="password">Password</Label>
-            <div className="relative">
-              <Input
-                id="password"
-                name="password"
-                type={showPw ? "text" : "password"}
-                autoComplete="new-password"
-                placeholder="••••••••"
-                required
-                minLength={8}
-                disabled={isPending}
-                className="pr-10"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPw((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                aria-label={showPw ? "Hide password" : "Show password"}
-                tabIndex={-1}
-              >
-                <EyeIcon open={showPw} />
-              </button>
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="confirmPassword">Confirm password</Label>
-            <Input
-              id="confirmPassword"
-              name="confirmPassword"
-              type={showPw ? "text" : "password"}
-              autoComplete="new-password"
-              required
-              disabled={isPending}
-            />
-          </div>
-
-          {error && (
-            <p className="text-sm text-destructive" role="alert">
-              {error}
-            </p>
+        <Button 
+          onClick={handleAccept} 
+          disabled={isPending}
+          className="w-full h-14 bg-[#0c1421] hover:bg-black text-white rounded-xl font-black uppercase tracking-widest text-[11px] flex items-center justify-center gap-3 shadow-lg active:scale-[0.98] transition-all"
+        >
+          {isPending ? "Configuring access..." : (
+            <>
+              <svg className="size-4" viewBox="0 0 24 24">
+                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+              </svg>
+              Accept & Sign in with Google
+            </>
           )}
-
-          <Button type="submit" className="w-full" disabled={isPending}>
-            {isPending ? "Creating account…" : "Create account and continue"}
-          </Button>
-        </form>
+        </Button>
       </CardContent>
-
-      <CardFooter className="justify-center pt-0">
-        <p className="text-sm text-muted-foreground">
-          Already have an account?{" "}
-          <Link href="/login" className="font-medium text-foreground underline-offset-4 hover:underline">
-            Sign in
-          </Link>
-        </p>
-      </CardFooter>
     </Card>
   );
 }

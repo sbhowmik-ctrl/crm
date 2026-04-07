@@ -2,15 +2,14 @@
  * auth.ts — Full NextAuth configuration (Node.js runtime only).
  *
  * Imports authConfig from auth.config.ts and layers on the Node.js-specific
- * pieces: Credentials provider (needs bcrypt) and Prisma adapter (needs pg).
+ * pieces: Google OAuth provider and Prisma adapter (needs pg).
  *
  * Never import this file from middleware.ts.
  */
 import NextAuth from "next-auth";
 import type { Adapter } from "next-auth/adapters";
-import Credentials from "next-auth/providers/credentials";
+import Google from "next-auth/providers/google";
 import { PrismaAdapter } from "@auth/prisma-adapter";
-import bcrypt from "bcryptjs";
 import type { Role } from "@prisma/client";
 
 import { pictureForJwt } from "@/lib/picture-for-jwt";
@@ -30,10 +29,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
     async jwt({ token, user }) {
       if (user) {
-        // Initial sign-in — seed token from the authorize() result.
+        // Initial sign-in — seed token from the newly created or fetched DB user.
+        // We use fallbacks ("USER" and true) just in case the OAuth payload is 
+        // evaluated before the DB defaults populate.
         token.id       = user.id;
-        token.role     = (user as { id: string; role: Role }).role;
-        token.isActive = (user as { id: string; role: Role; isActive: boolean }).isActive;
+        token.role     = (user as { id: string; role?: Role }).role ?? "USER";
+        token.isActive = (user as { id: string; isActive?: boolean }).isActive ?? true;
         token.picture = pictureForJwt(
           (user as { image?: string | null }).image ?? undefined,
         );
@@ -56,34 +57,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
 
   providers: [
-    Credentials({
-      name: "credentials",
-      credentials: {
-        email:    { label: "Email",    type: "email"    },
-        password: { label: "Password", type: "password" },
-      },
-
-      async authorize(credentials) {
-        const email    = (credentials?.email    as string | undefined)?.trim().toLowerCase();
-        const password =  credentials?.password as string | undefined;
-
-        if (!email || !password) return null;
-
-        const user = await prisma.user.findUnique({ where: { email } });
-        if (!user) return null;
-
-        const passwordMatch = await bcrypt.compare(password, user.passwordHash);
-        if (!passwordMatch) return null;
-
-        return {
-          id:       user.id,
-          email:    user.email,
-          name:     user.name ?? undefined,
-          image:    pictureForJwt(user.image),
-          role:     user.role,
-          isActive: user.isActive,
-        };
-      },
+    Google({
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      allowDangerousEmailAccountLinking: true,
     }),
   ],
 });

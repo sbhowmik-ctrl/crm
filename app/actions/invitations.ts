@@ -2,7 +2,6 @@
 
 import { randomBytes } from "crypto";
 import { z } from "zod";
-import bcrypt from "bcryptjs";
 import { ActivityAction, Role } from "@prisma/client";
 
 import { auth } from "@/auth";
@@ -109,13 +108,7 @@ export async function inviteUser(_prev: InviteUserResult | null, formData: FormD
 // ---------------------------------------------------------------------------
 
 const AcceptSchema = z.object({
-  token:           z.string().min(1, "Invalid invitation link."),
-  name:            z.string().trim().min(1, "Name is required."),
-  password:        z.string().min(8, "Password must be at least 8 characters."),
-  confirmPassword: z.string(),
-}).refine((d) => d.password === d.confirmPassword, {
-  message: "Passwords do not match.",
-  path:    ["confirmPassword"],
+  token: z.string().min(1, "Invalid invitation link."),
 });
 
 export type AcceptInvitationResult =
@@ -127,16 +120,14 @@ export async function acceptInvitation(
   formData: FormData,
 ): Promise<AcceptInvitationResult> {
   const parsed = AcceptSchema.safeParse({
-    token:           formData.get("token"),
-    name:            formData.get("name"),
-    password:        formData.get("password"),
-    confirmPassword: formData.get("confirmPassword"),
+    token: formData.get("token"),
   });
+  
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
   }
 
-  const { token, name, password } = parsed.data;
+  const { token } = parsed.data;
 
   const invitation = await prisma.userInvitation.findUnique({
     where: { token },
@@ -162,30 +153,38 @@ export async function acceptInvitation(
 
   const email = invitation.email;
 
-  const taken = await prisma.user.findUnique({ where: { email }, select: { id: true } });
-  if (taken) {
-    return { success: false, error: "An account with this email already exists. Sign in instead." };
-  }
+  // Pre-create or update the user so Auth.js links to it when they sign in with Google
+  const user = await prisma.$transaction(async (tx) => {
+    const existingUser = await tx.user.findUnique({ where: { email } });
+    
+    let u;
+    if (existingUser) {
+      // Upgrade existing user to the invited role
+      u = await tx.user.update({
+        where: { email },
+        data: { role: invitation.role }
+      });
+    } else {
+      // Pre-create user without a password
+      u = await tx.user.create({
+        data: { email, role: invitation.role }
+      });
+    }
 
-  const passwordHash = await bcrypt.hash(password, 12);
-
-  const newUser = await prisma.$transaction(async (tx) => {
-    const u = await tx.user.create({
-      data: { name, email, passwordHash, role: invitation.role },
-    });
     await tx.userInvitation.update({
       where: { id: invitation.id },
       data:  { acceptedAt: new Date() },
     });
+
     return u;
   });
 
   await logActivity({
     actorId:    invitation.invitedById,
-    action:     ActivityAction.CREATE,
+    action:     ActivityAction.UPDATE,
     entityType: "user",
-    entityId:   newUser.id,
-    label:      `${email} (accepted invite)`,
+    entityId:   user.id,
+    label:      `${email} (accepted invite as ${invitation.role})`,
   });
 
   return { success: true };
