@@ -11,8 +11,9 @@ const PRISMA_LOG_QUERIES = process.env.PRISMA_LOG_QUERIES === "1";
 /**
  * Bump this when you add/change Prisma models so `next dev` does not keep an
  * old PrismaClient instance missing new delegates (e.g. `projectMember`).
+ * Last bump: CredentialSection.parentId / hierarchy (subsections).
  */
-const PRISMA_SCHEMA_REVISION = 18;
+const PRISMA_SCHEMA_REVISION = 19;
 
 const globalForPrisma = globalThis as unknown as {
   prisma: ReturnType<typeof buildPrismaClient> | undefined;

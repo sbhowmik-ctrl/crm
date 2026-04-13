@@ -205,19 +205,21 @@ export default function AddSecretDialog({
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       {!hideTrigger && (
-        <DialogTrigger asChild>
-          {triggerIconOnly ? (
-            <Button variant="outline" size="sm" className="h-7 px-2 text-xs font-medium text-muted-foreground hover:text-foreground gap-1.5">
-              <Plus className="size-3.5" />
-              {defaultTriggerLabel}
-            </Button>
-          ) : (
-            <Button size="sm">
-              <Plus className="mr-1.5 size-4" />
-              {defaultTriggerLabel}
-            </Button>
-          )}
-        </DialogTrigger>
+        <DialogTrigger
+          render={
+            triggerIconOnly ? (
+              <Button variant="outline" size="sm" className="h-7 px-2 text-xs font-medium text-muted-foreground hover:text-foreground gap-1.5">
+                <Plus className="size-3.5" />
+                {defaultTriggerLabel}
+              </Button>
+            ) : (
+              <Button size="sm">
+                <Plus className="mr-1.5 size-4" />
+                {defaultTriggerLabel}
+              </Button>
+            )
+          }
+        />
       )}
 
       <DialogContent className="max-w-2xl">

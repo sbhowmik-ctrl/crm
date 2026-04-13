@@ -138,18 +138,20 @@ export default function ProjectSecretsWidget({
         <div className="flex flex-wrap items-center justify-start gap-2 sm:justify-end">
           {showAddSecret && allEnvs.length > 0 && (
             <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-9 gap-1.5 border-white/20 bg-white/40 text-[10px] font-black uppercase tracking-widest text-[#0c1421] shadow-sm backdrop-blur-md hover:bg-white/60"
-                >
-                  <Filter className="size-3.5 opacity-70" aria-hidden />
-                  Filter
-                  <ChevronDown className="size-3 opacity-60" aria-hidden />
-                </Button>
-              </PopoverTrigger>
+              <PopoverTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-9 gap-1.5 border-white/20 bg-white/40 text-[10px] font-black uppercase tracking-widest text-[#0c1421] shadow-sm backdrop-blur-md hover:bg-white/60"
+                  >
+                    <Filter className="size-3.5 opacity-70" aria-hidden />
+                    Filter
+                    <ChevronDown className="size-3 opacity-60" aria-hidden />
+                  </Button>
+                }
+              />
               <PopoverContent align="center" className="w-56 space-y-3 p-3">
                 <p className="text-xs font-medium text-muted-foreground">Show secrets for</p>
                 <div className="space-y-2.5">
@@ -241,16 +243,18 @@ export default function ProjectSecretsWidget({
                     {/* Delete Section Button & Dialog */}
                     {canMutateVault && (
                       <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="h-7 px-2 text-xs font-medium text-red-500 hover:text-red-600 hover:bg-red-50 gap-1.5"
-                            disabled={isPending}
-                          >
-                            <Trash2 className="size-3.5" />
-                          </Button>
-                        </AlertDialogTrigger>
+                        <AlertDialogTrigger
+                          render={
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs font-medium text-red-500 hover:text-red-600 hover:bg-red-50 gap-1.5"
+                              disabled={isPending}
+                            >
+                              <Trash2 className="size-3.5" />
+                            </Button>
+                          }
+                        />
                         <AlertDialogContent>
                           <AlertDialogHeader>
                             <AlertDialogTitle>Delete Section?</AlertDialogTitle>
@@ -313,7 +317,13 @@ export default function ProjectSecretsWidget({
                               <div className="flex items-center justify-end gap-1">
                                 <RevealButton secretId={s.id} secretKey={s.key} />
                                 <CopyButton secretId={s.id} />
-                                {canMutateVault && <EditSecretDialog secretId={s.id} secretKey={s.key} />}
+                                {canMutateVault && (
+                                  <EditSecretDialog
+                                    secretId={s.id}
+                                    secretKey={s.key}
+                                    environment={envName}
+                                  />
+                                )}
                                 {canMutateVault && <DeleteSecretButton secretId={s.id} secretKey={s.key} />}
                               </div>
                             </td>

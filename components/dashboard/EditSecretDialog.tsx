@@ -53,15 +53,16 @@ function PencilIcon({ className }: { className?: string }) {
 // ---------------------------------------------------------------------------
 
 interface Props {
-  secretId:  string;
-  secretKey: string;
+  secretId:    string;
+  secretKey:   string;
+  environment: string;
 }
 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
-export default function EditSecretDialog({ secretId, secretKey }: Props) {
+export default function EditSecretDialog({ secretId, secretKey, environment }: Props) {
   const [open, setOpen]           = useState(false);
   const [key, setKey]             = useState(secretKey);
   const [value, setValue]         = useState("");
@@ -97,7 +98,12 @@ export default function EditSecretDialog({ secretId, secretKey }: Props) {
     if (!value.trim()) { setSaveError("Value is required."); return; }
 
     startSave(async () => {
-      const result = await updateSecret({ secretId, key: key.trim(), value: value.trim() });
+      const result = await updateSecret({
+        secretId,
+        key: key.trim(),
+        value: value.trim(),
+        environment,
+      });
       if (result.success) {
         toast.success(`Secret "${key.trim()}" updated.`);
         setOpen(false);

@@ -390,7 +390,7 @@ const UpdateSecretSchema = z.object({
   secretId: z.string().min(1, "Secret ID must not be empty."),
   key:      z.string().min(1, "Key must not be empty."),
   value:    z.string().min(1, "Value must not be empty."),
-  environment: z.string().min(1),
+  environment: z.string().trim().min(1, "Environment must not be empty."),
 });
 
 export type UpdateSecretInput  = z.infer<typeof UpdateSecretSchema>;
@@ -411,16 +411,17 @@ export async function updateSecret(
   if (!vault.ok) return { success: false, error: vault.error };
 
   const parsed = UpdateSecretSchema.safeParse({
-    secretId: rawInput.secretId?.trim(),
-    key:      rawInput.key?.trim(),
-    value:    rawInput.value?.trim(),
+    secretId:    rawInput.secretId?.trim(),
+    key:         rawInput.key?.trim(),
+    value:       rawInput.value?.trim(),
+    environment: rawInput.environment,
   });
 
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues.map((i) => i.message).join(" | ") };
   }
 
-  const { secretId, key, value } = parsed.data;
+  const { secretId, key, value, environment } = parsed.data;
   const actor = { id: vault.user.id, role: vault.user.role };
 
   if (!canUserPerformAction(actor, null, "secret", "update")) {

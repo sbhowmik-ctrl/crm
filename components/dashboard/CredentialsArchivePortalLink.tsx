@@ -16,10 +16,10 @@ export default function CredentialsArchivePortalLink({ isArchivedPortal }: Props
 
   return (
     <Button
+      asChild
       variant="outline"
       size="sm"
       className="shrink-0 border-blue-200 bg-blue-600 text-white hover:bg-blue-700 hover:text-white"
-      {...({ asChild: true } as any)}
     >
       <Link href={href}>
         {isArchivedPortal ? "← Active Credentials" : "Archived Credentials"}
