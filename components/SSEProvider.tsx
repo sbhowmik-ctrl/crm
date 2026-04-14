@@ -19,7 +19,7 @@ export default function SSEProvider({ children }: { children: React.ReactNode })
           router.refresh(); // Automatically updates all Server Components on the screen
         }
         
-        if (data.type === "SECRET_DELETED") {
+        if (data.type === "SECRET_DELETED" || data.type === "PROJECT_CREATED") {
           router.refresh();
         }
       } catch (err) {

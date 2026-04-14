@@ -13,7 +13,7 @@ if (process.env.NODE_ENV !== "production") {
 
 // Optional: Define strict event types
 export type AppEvent = {
-  type: "ACCESS_REVOKED" | "SECRET_DELETED" | "PROJECT_ARCHIVED";
+  type: "ACCESS_REVOKED" | "SECRET_DELETED" | "PROJECT_ARCHIVED" | "PROJECT_CREATED";
   userId?: string;     // If the event is specific to a user
   projectId?: string;  // If the event is specific to a project
   message?: string;

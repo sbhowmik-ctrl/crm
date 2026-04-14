@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { ActivityAction, Role } from "@prisma/client";
 import { auth } from "@/auth";
@@ -8,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { canUserPerformAction } from "@/lib/permissions";
 import { assertActiveVaultSession } from "@/lib/session-guards";
 import { getVaultProjectIdsForActor } from "@/lib/queries/access";
+import { eventBus } from "@/lib/event-bus";
 import { vaultWhereActive, VAULT_ENTITY_STATUS } from "@/lib/vault-entity-status";
 
 // --- Schemas ---
@@ -131,6 +133,12 @@ export async function createProject(
     entityType: "project",
     entityId: project.id,
     label: parsed.data.name,
+  });
+
+  revalidatePath("/dashboard/projects");
+  eventBus.emit("vault_event", {
+    type: "PROJECT_CREATED",
+    projectId: project.id,
   });
 
   return { success: true, id: project.id };

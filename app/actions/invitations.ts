@@ -180,11 +180,11 @@ export async function acceptInvitation(
   });
 
   await logActivity({
-    actorId:    invitation.invitedById,
+    actorId:    user.id,
     action:     ActivityAction.UPDATE,
     entityType: "user",
     entityId:   user.id,
-    label:      `${email} (accepted invite as ${invitation.role})`,
+    label:      `${email} accepted the invitation as ${invitation.role}`,
   });
 
   return { success: true };

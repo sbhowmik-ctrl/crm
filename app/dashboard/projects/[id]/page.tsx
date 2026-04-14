@@ -191,19 +191,24 @@ export default async function ProjectDetailPage({
     return acc;
   }, {} as Record<string, typeof secrets>);
 
+  const backHref = project.parent
+    ? `/dashboard/projects/${project.parent.id}`
+    : "/dashboard/projects";
+  const backLabel = project.parent ? project.parent.name : "Projects";
+
   return (
     <div className="min-w-0 space-y-8">
 
       {/* Breadcrumb + header */}
       <div>
         <Link
-          href="/dashboard/projects"
+          href={backHref}
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
         >
           <svg className="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none">
             <path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-          Projects
+          {backLabel}
         </Link>
 
         <div className="mt-2 flex flex-wrap items-center justify-between gap-3">

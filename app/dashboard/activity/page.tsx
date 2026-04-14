@@ -21,6 +21,26 @@ import {
 } from "lucide-react";
 const ELEVATED = new Set<Role>([Role.SUPERADMIN, Role.ADMIN, Role.MODERATOR]);
 
+/** Activity log timestamps are shown in IST for operators in India. */
+const ACTIVITY_TIMEZONE = "Asia/Kolkata";
+
+function formatActivityTimeIST(iso: Date): string {
+  return iso.toLocaleTimeString("en-IN", {
+    timeZone: ACTIVITY_TIMEZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
+function formatActivityDateIST(iso: Date): string {
+  return iso.toLocaleDateString("en-IN", {
+    timeZone: ACTIVITY_TIMEZONE,
+    month: "short",
+    day: "numeric",
+  });
+}
+
 function ActionIcon({ action }: { action: ActivityAction }) {
   const base = "size-5";
   switch (action) {
@@ -70,6 +90,18 @@ function parseActivityPageParam(raw: string | undefined): number {
   if (raw === undefined || raw === "") return 1;
   const n = parseInt(raw.trim(), 10);
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : 1;
+}
+
+/** Invitation logs store invitee email on `entityId`; older rows may only have it in `label`. */
+function invitationInviteeEmail(
+  entityType: string,
+  entityId: string | null,
+  label: string | null | undefined,
+): string | null {
+  if (entityType !== "invitation") return null;
+  if (entityId?.includes("@")) return entityId;
+  const fromLabel = label?.match(/\b[\w.+-]+@[\w.-]+\.[a-z]{2,}\b/i)?.[0];
+  return fromLabel ?? null;
 }
 
 export default async function ActivityPage({
@@ -134,6 +166,11 @@ export default async function ActivityPage({
             const verb = verbPhrase(row.action, row.entityType);
             const label = row.label?.trim();
             const showLabel = Boolean(label);
+            const inviteeEmail = invitationInviteeEmail(
+              row.entityType,
+              row.entityId,
+              row.label,
+            );
 
             return (
               <div 
@@ -155,11 +192,22 @@ export default async function ActivityPage({
                     </span>
                     <span className="text-[11px] font-medium text-slate-400">{verb}</span>
                     <span className="text-[11px] font-bold text-[#0c1421] uppercase tracking-tighter">{kind}</span>
+                    {inviteeEmail ? (
+                      <>
+                        <span className="text-[11px] font-medium text-slate-400">to</span>
+                        <span
+                          className="text-[11px] font-bold text-[#0c1421] tracking-tight break-all max-w-[min(100%,18rem)] sm:max-w-none"
+                          title={inviteeEmail}
+                        >
+                          {inviteeEmail}
+                        </span>
+                      </>
+                    ) : null}
                   </div>
                   
                   <div className="flex items-center gap-2">
                     {showLabel ? (
-                      <span className="text-sm font-bold text-[#0c1421] bg-white/60 px-3 py-0.5 rounded-lg border border-white/20 whitespace-nowrap overflow-hidden text-ellipsis max-w-[300px]">
+                      <span className="text-sm font-bold text-[#0c1421] bg-white/60 px-3 py-0.5 rounded-lg border border-white/20 max-w-[min(100%,28rem)] break-words">
                         {label}
                       </span>
                     ) : (
@@ -173,10 +221,10 @@ export default async function ActivityPage({
 
                 <div className="flex md:flex-col items-center md:items-end justify-between md:justify-center gap-1 shrink-0 md:pl-5 md:border-l border-white/20">
                   <time className="text-[10px] font-black text-[#0c1421] tabular-nums uppercase tracking-widest leading-none">
-                    {row.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {formatActivityTimeIST(row.createdAt)}
                   </time>
                   <time className="text-[9px] font-bold text-slate-400 uppercase tracking-wider leading-none">
-                    {row.createdAt.toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                    {formatActivityDateIST(row.createdAt)}
                   </time>
                 </div>
 

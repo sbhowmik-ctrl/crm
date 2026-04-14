@@ -61,6 +61,14 @@ async function assignedProjectIdsForUser(userId: string): Promise<string[]> {
   return rows.map((r) => r.projectId);
 }
 
+async function userEmailForLog(userId: string): Promise<string> {
+  const u = await prisma.user.findUnique({
+    where:  { id: userId },
+    select: { email: true },
+  });
+  return u?.email ?? userId;
+}
+
 /**
  * Assigns a project membership to a user (ADMIN / SUPERADMIN only; rank rules apply).
  */
@@ -96,12 +104,14 @@ export async function assignProjectToUser(
     create: { userId: tid, projectId: project.id },
   });
 
+  const targetEmail = await userEmailForLog(tid);
+
   await logActivity({
     actorId:    vault.user.id,
     action:     ActivityAction.ASSIGN,
     entityType: "project_member",
     entityId:   project.id,
-    label:      `User ${tid}`,
+    label:      `Assigned ${targetEmail} to project`,
   });
 
   return { success: true };
@@ -143,12 +153,14 @@ export async function assignProjectsToUserBatch(
     skipDuplicates: true,
   });
 
+  const batchTargetEmail = await userEmailForLog(tid);
+
   await logActivity({
     actorId:    vault.user.id,
     action:     ActivityAction.ASSIGN,
     entityType: "project_member",
     entityId:   tid,
-    label:      `Assigned ${ids.length} project(s) to user ${tid}`,
+    label:      `Assigned ${ids.length} project(s) to ${batchTargetEmail}`,
   });
 
   return { success: true };
@@ -182,12 +194,24 @@ export async function removeProjectFromUser(
     return { success: false, error: "No matching project assignment found for this user." };
   }
 
+  const [removedUserEmail, removedFromProject] = await Promise.all([
+    userEmailForLog(tid),
+    prisma.project.findUnique({
+      where:  { id: pid },
+      select: { name: true },
+    }),
+  ]);
+
+  const projectTail = removedFromProject?.name
+    ? ` "${removedFromProject.name}"`
+    : "";
+
   await logActivity({
     actorId:    vault.user.id,
     action:     ActivityAction.REMOVE,
     entityType: "project_member",
     entityId:   pid,
-    label:      `Removed user ${tid} from project`,
+    label:      `Removed ${removedUserEmail} from project${projectTail}`,
   });
 
   // Notify the affected user so their client refreshes immediately
