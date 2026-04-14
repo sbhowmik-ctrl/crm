@@ -510,7 +510,110 @@ export async function deleteSecret(secretId: string): Promise<DeleteSecretResult
   return { success: true };
 }
 
-// Add this to the bottom of app/actions/secrets.ts
+const RenameEnvironmentSchema = z.object({
+  projectId: z.string().trim().min(1, "Project ID must not be empty."),
+  fromEnvironment: z.string().trim().min(1, "Current name must not be empty."),
+  toEnvironment: z.string().trim().min(1, "New name must not be empty."),
+});
+
+export type RenameEnvironmentResult =
+  | { success: true }
+  | { success: false; error: string };
+
+/**
+ * Renames a secrets section by updating the `environment` field on all secrets
+ * in that section. Allowed for project-member USERs and for roles that may
+ * edit secrets (MODERATOR+); interns cannot rename.
+ */
+export async function renameEnvironment(
+  projectId: string,
+  fromEnvironment: string,
+  toEnvironment: string,
+): Promise<RenameEnvironmentResult> {
+  const session = await auth();
+  const vault = assertActiveVaultSession(session);
+  if (!vault.ok) return { success: false, error: vault.error };
+
+  const parsed = RenameEnvironmentSchema.safeParse({
+    projectId,
+    fromEnvironment,
+    toEnvironment,
+  });
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues.map((i) => i.message).join(" | ") };
+  }
+
+  const {
+    projectId: pid,
+    fromEnvironment: fromEnv,
+    toEnvironment: toEnv,
+  } = parsed.data;
+
+  if (fromEnv === toEnv) {
+    return { success: true };
+  }
+
+  const actor = { id: vault.user.id, role: vault.user.role };
+
+  if (actor.role === Role.INTERN) {
+    return { success: false, error: "Interns cannot rename sections." };
+  }
+
+  if (actor.role === Role.USER) {
+    const scope = await assertUserInternAssignedToProject(actor, pid);
+    if (!scope.ok) return { success: false, error: scope.error };
+  } else {
+    if (!canUserPerformAction(actor, null, "secret", "update")) {
+      return {
+        success: false,
+        error: `Role "${vault.user.role}" is not permitted to rename sections.`,
+      };
+    }
+    const scope = await assertModeratorAssignedToProject(actor, pid);
+    if (!scope.ok) return { success: false, error: scope.error };
+  }
+
+  const project = await prisma.project.findFirst({
+    where: { id: pid, ...vaultWhereActive },
+    select: { id: true },
+  });
+  if (!project) {
+    return { success: false, error: "Project not found or not available." };
+  }
+
+  const existingTarget = await prisma.secret.findFirst({
+    where: { projectId: pid, environment: toEnv },
+    select: { id: true },
+  });
+  if (existingTarget) {
+    return {
+      success: false,
+      error: `A section named "${toEnv}" already exists in this project.`,
+    };
+  }
+
+  const result = await prisma.secret.updateMany({
+    where: { projectId: pid, environment: fromEnv },
+    data: { environment: toEnv },
+  });
+
+  if (result.count === 0) {
+    return {
+      success: false,
+      error: "No secrets found in that section. Try refreshing the page.",
+    };
+  }
+
+  await logActivity({
+    actorId: vault.user.id,
+    action: ActivityAction.UPDATE,
+    entityType: "secret",
+    entityId: pid,
+    label: `Renamed section "${fromEnv}" → "${toEnv}" (${result.count} secret(s))`,
+  });
+
+  return { success: true };
+}
 
 /**
  * Deletes all secrets within a specific environment for a project.

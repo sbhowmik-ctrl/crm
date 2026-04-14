@@ -9,6 +9,7 @@ import AddSecretDialog from "@/components/dashboard/AddSecretDialog";
 import RevealButton from "@/components/RevealButton";
 import CopyButton from "@/components/CopyButton";
 import EditSecretDialog from "@/components/dashboard/EditSecretDialog";
+import RenameEnvironmentDialog from "@/components/dashboard/RenameEnvironmentDialog";
 import DeleteSecretButton from "@/components/dashboard/DeleteSecretButton";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -87,6 +88,18 @@ export default function ProjectSecretsWidget({
 
   const setEnvVisible = (name: string, visible: boolean) => {
     setEnvFilter((prev) => ({ ...prev, [name]: visible }));
+  };
+
+  const handleRenameClientOnlyEnv = (oldName: string, newName: string) => {
+    setAddedEnvs((prev) => prev.map((e) => (e === oldName ? newName : e)));
+    setEnvFilter((prev) => {
+      const next = { ...prev };
+      if (next[oldName] !== undefined) {
+        next[newName] = next[oldName];
+        delete next[oldName];
+      }
+      return next;
+    });
   };
 
   const handleDeleteSection = (envName: string, hasSecrets: boolean) => {
@@ -217,9 +230,20 @@ export default function ProjectSecretsWidget({
               <div key={envName} className="space-y-3">
                 {/* Section Header with Section-specific Actions */}
                 <div className="flex items-center justify-between bg-muted/30 px-4 py-2.5 rounded-lg border border-border">
-                  <h3 className="text-sm font-bold uppercase tracking-widest text-slate-600">
-                    {envName}
-                  </h3>
+                  <div className="flex min-w-0 items-center gap-1">
+                    <h3 className="text-sm font-bold uppercase tracking-widest text-slate-600 truncate">
+                      {envName}
+                    </h3>
+                    {showAddSecret && (
+                      <RenameEnvironmentDialog
+                        projectId={project.id}
+                        currentName={envName}
+                        existingEnvironmentNames={allEnvs}
+                        isClientOnlySection={!hasSecrets && addedEnvs.includes(envName)}
+                        onRenameClientOnly={handleRenameClientOnlyEnv}
+                      />
+                    )}
+                  </div>
                   <div className="flex items-center gap-2">
                     {/* Create (keys) → Read (copy) → Delete (section) */}
                     {showAddSecret && (
