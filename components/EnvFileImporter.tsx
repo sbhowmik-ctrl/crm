@@ -198,7 +198,7 @@ export default function EnvFileImporter({
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        className={`relative max-h-[min(35vh,11rem)] min-w-0 overflow-auto rounded-lg border transition-colors ${
+        className={`relative max-h-[min(40vh,14rem)] min-h-0 min-w-0 overflow-auto rounded-lg border transition-colors ${
           isDragging ? "border-blue-500 bg-blue-50/50" : "border-border bg-muted/30"
         }`}
       >
@@ -213,7 +213,7 @@ export default function EnvFileImporter({
           onChange={(e) => handleTextChange(e.target.value)}
           placeholder={"# Paste or Drop your .env content here\nDATABASE_URL=postgres://user:pass@localhost/db\nSTRIPE_SECRET_KEY=sk_live_..."}
           spellCheck={false}
-          className="box-border min-h-[8.75rem] w-full min-w-[min(100%,48rem)] resize-none bg-transparent p-3 font-mono text-sm whitespace-pre text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+          className="box-border min-h-[8.75rem] w-full min-w-0 max-w-none resize-none bg-transparent p-3 font-mono text-sm whitespace-pre text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
           disabled={isPending}
         />
       </div>
@@ -234,7 +234,7 @@ export default function EnvFileImporter({
             </div>
           </div>
 
-          <div className="max-h-[min(40vh,22rem)] min-w-0 overflow-auto rounded-lg border border-border">
+          <div className="max-h-[min(45vh,24rem)] min-h-0 min-w-0 overflow-auto rounded-lg border border-border">
             <table className="w-max min-w-full text-sm">
               <thead className="sticky top-0 z-[1] bg-muted/50 text-xs text-muted-foreground backdrop-blur-sm">
                 <tr>
