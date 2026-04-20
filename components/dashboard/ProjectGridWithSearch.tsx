@@ -62,7 +62,7 @@ export default function ProjectGridWithSearch({
           />
         </div>
         <div className="flex items-center gap-4">
-          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">{filtered.length} Projects Found</span>
+          <span className="text-sm font-bold text-black uppercase tracking-wide leading-none">{filtered.length} Projects Found</span>
         </div>
       </div>
 

@@ -14,6 +14,7 @@ import {
 } from "@/lib/vault-entity-status";
 import { FileText, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import CopyNoteButton from "@/components/CopyNoteButton";
 import AddNoteDialog from "@/components/dashboard/AddNoteDialog";
@@ -129,16 +130,22 @@ export default async function NotesPage({
           </div>
           <div className="flex items-center gap-4">
             {showAddNote && <AddNoteDialog />}
-            <Link
-              href={
-                isArchivedList
-                  ? "/dashboard/notes"
-                  : `/dashboard/notes?status=${VAULT_ENTITY_STATUS.ARCHIVED}`
-              }
-              className="text-[9px] font-black text-blue-500 hover:text-blue-600 uppercase tracking-widest underline-offset-4 hover:underline"
+            <Button
+              asChild
+              variant="default"
+              size="sm"
+              className="bg-blue-600 font-black uppercase tracking-widest text-[9px] text-white hover:bg-blue-700"
             >
-              {isArchivedList ? "Access Primary Notes" : "Access Archived Notes"}
-            </Link>
+              <Link
+                href={
+                  isArchivedList
+                    ? "/dashboard/notes"
+                    : `/dashboard/notes?status=${VAULT_ENTITY_STATUS.ARCHIVED}`
+                }
+              >
+                {isArchivedList ? "Access Primary Notes" : "Access Archived Notes"}
+              </Link>
+            </Button>
           </div>
         </div>
 
