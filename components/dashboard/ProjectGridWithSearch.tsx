@@ -6,16 +6,14 @@ import { Search, ChevronRight } from "lucide-react";
 
 import ArchiveProjectButton from "@/components/dashboard/ArchiveProjectButton";
 import UnarchiveProjectButton from "@/components/dashboard/UnarchiveProjectButton";
-import { Badge } from "@/components/ui/badge";
 
 export type ProjectCardRow = {
-  id:          string;
-  name:        string;
-  description: string | null;
+  id:              string;
+  name:            string;
+  description:     string | null;
   /** Full path for display and search, e.g. "my-proj" or "my-proj -> sub-a" */
-  displayPath: string;
-  secretCount: number;
-  noteCount:   number;
+  displayPath:     string;
+  subprojectCount: number;
 };
 
 interface Props {
@@ -129,18 +127,10 @@ export default function ProjectGridWithSearch({
 
                 <div className="mt-auto pt-4 flex flex-wrap gap-4 border-t border-white/10">
                    <div className="flex flex-col gap-0.5">
-                     <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">Secrets</span>
+                     <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">Subprojects</span>
                      <div className="flex items-center gap-2">
-                       <div className="size-1 bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
-                       <span className="text-[13px] font-black text-[#0c1421] leading-none">{p.secretCount}</span>
-                     </div>
-                   </div>
-                   <div className="w-px h-6 bg-white/20 self-center" />
-                   <div className="flex flex-col gap-0.5">
-                     <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">Notes</span>
-                     <div className="flex items-center gap-2">
-                       <div className="size-1 bg-indigo-500 rounded-full shadow-[0_0_8px_rgba(99,102,241,0.5)]" />
-                       <span className="text-[13px] font-black text-[#0c1421] leading-none">{p.noteCount}</span>
+                       <div className="size-1 bg-violet-500 rounded-full shadow-[0_0_8px_rgba(139,92,246,0.5)]" />
+                       <span className="text-[13px] font-black text-[#0c1421] leading-none">{p.subprojectCount}</span>
                      </div>
                    </div>
                 </div>

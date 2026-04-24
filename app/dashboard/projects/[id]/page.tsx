@@ -71,7 +71,14 @@ export default async function ProjectDetailPage({
       parentId:    true,
       parent:      { select: { id: true, name: true } },
       children:    {
-        select:  { id: true, name: true, description: true },
+        select: {
+          id:          true,
+          name:        true,
+          description: true,
+          _count:      {
+            select: { secrets: true, notes: true, children: true },
+          },
+        },
         orderBy: { name: "asc" },
       },
     },
@@ -298,17 +305,59 @@ export default async function ProjectDetailPage({
               </p>
             </div>
           ) : (
-            <ul className="grid gap-2 sm:grid-cols-2">
+            <ul className="grid gap-4 sm:grid-cols-2">
               {visibleSubprojects.map((c) => (
                 <li key={c.id}>
                   <Link
                     href={`/dashboard/projects/${c.id}`}
-                    className="block rounded-xl border border-border bg-card px-4 py-3 text-sm shadow-sm transition-colors hover:bg-muted/30"
+                    className="flex min-h-36 flex-col justify-between gap-4 rounded-2xl border border-border bg-card px-6 py-7 shadow-sm transition-colors hover:bg-muted/30 sm:min-h-40"
                   >
-                    <span className="font-medium text-foreground">{c.name}</span>
-                    {c.description && (
-                      <span className="mt-1 block line-clamp-2 text-xs text-muted-foreground">{c.description}</span>
-                    )}
+                    <div className="min-w-0">
+                      <span className="text-lg font-semibold tracking-tight text-foreground">{c.name}</span>
+                      {c.description && (
+                        <span className="mt-2 block line-clamp-2 text-sm text-muted-foreground">{c.description}</span>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-x-5 gap-y-2 border-t border-border/60 pt-4">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Secrets
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className="size-1.5 shrink-0 rounded-full bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.45)]"
+                            aria-hidden
+                          />
+                          <span className="text-sm font-semibold tabular-nums text-foreground">{c._count.secrets}</span>
+                        </div>
+                      </div>
+                      <div className="w-px self-stretch bg-border/60" aria-hidden />
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Notes
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className="size-1.5 shrink-0 rounded-full bg-indigo-500 shadow-[0_0_6px_rgba(99,102,241,0.45)]"
+                            aria-hidden
+                          />
+                          <span className="text-sm font-semibold tabular-nums text-foreground">{c._count.notes}</span>
+                        </div>
+                      </div>
+                      <div className="w-px self-stretch bg-border/60" aria-hidden />
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Subprojects
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className="size-1.5 shrink-0 rounded-full bg-violet-500 shadow-[0_0_6px_rgba(139,92,246,0.45)]"
+                            aria-hidden
+                          />
+                          <span className="text-sm font-semibold tabular-nums text-foreground">{c._count.children}</span>
+                        </div>
+                      </div>
+                    </div>
                   </Link>
                 </li>
               ))}

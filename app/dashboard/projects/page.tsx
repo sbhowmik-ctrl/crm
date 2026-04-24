@@ -61,7 +61,7 @@ export default async function ProjectsPage({
           : { id: { in: [] } }
         : statusWhere,
     orderBy: { createdAt: "desc" },
-    include: { _count: { select: { secrets: true, notes: true } } },
+    include: { _count: { select: { children: true } } },
   });
 
   const isLiveList = status === VAULT_ENTITY_STATUS.ACTIVE;
@@ -91,12 +91,11 @@ export default async function ProjectsPage({
   }
 
   const projectRows = projects.map((p) => ({
-    id:          p.id,
-    name:        p.name,
-    description: p.description,
-    displayPath: displayPathFor(p),
-    secretCount: p._count.secrets,
-    noteCount:   p._count.notes,
+    id:              p.id,
+    name:            p.name,
+    description:     p.description,
+    displayPath:     displayPathFor(p),
+    subprojectCount: p._count.children,
   }));
 
   return (
